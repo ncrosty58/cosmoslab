@@ -133,7 +133,7 @@
       "type": "function",
       "z": "website_leads_tab",
       "name": "Prepare Opportunity Search",
-      "func": "const person = msg.payload && msg.payload.data && (msg.payload.data.createPerson || msg.payload.data.updatePerson);\nconst personId = person ? person.id : '';\nmsg.personId = personId;\n\nif (!personId) {\n    node.warn(\"ChassisShield: Person create/update failed - \" + JSON.stringify(msg.payload));\n\n    const lead = msg.originalPayload || {};\n    msg.title = \"\\u26a0\\ufe0f ChassisShield CRM Sync FAILED\";\n    msg.priority = 9;\n    msg.payload = `Lead (${lead.email || 'no email'}, ${lead.name || 'Unknown'}) did NOT sync to CRM.\\n\\nTwenty API response:\\n${JSON.stringify(msg.payload)}`;\n    return [null, msg]; // Stop the CRM chain, send a Gotify alert instead\n}\n\nmsg.method = \"GET\";\nmsg.url = `http://bodhi.lab:3100/rest/opportunities?filter=pointOfContact.id[eq]:${encodeURIComponent(personId)}`;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + env.get(\"CHASSISSHIELD_TWENTY_TOKEN\"),\n    \"Host\": \"chassisshield.localhost:3000\"\n};\n\nreturn [msg, null];",
+      "func": "const person = msg.payload && msg.payload.data && (msg.payload.data.createPerson || msg.payload.data.updatePerson);\nconst personId = person ? person.id : '';\nmsg.personId = personId;\n\nif (!personId) {\n    node.warn(\"ChassisShield: Person create/update failed - \" + JSON.stringify(msg.payload));\n\n    const lead = msg.originalPayload || {};\n    msg.title = \"\\u26a0\\ufe0f ChassisShield CRM Sync FAILED\";\n    msg.priority = 9;\n    msg.payload = `Lead (${lead.email || 'no email'}, ${lead.name || 'Unknown'}) did NOT sync to CRM.\\n\\nTwenty API response:\\n${JSON.stringify(msg.payload)}`;\n    return [null, msg]; // Stop the CRM chain, send a Gotify alert instead\n}\n\nmsg.method = \"GET\";\nmsg.url = `http://bodhi.lab:3100/rest/opportunities?filter=pointOfContact.id[eq]:${encodeURIComponent(personId)}`;\n\nreturn [msg, null];",
       "outputs": 2,
       "timeout": 0,
       "noerr": 0,
@@ -144,7 +144,7 @@
       "y": 340,
       "wires": [
         [
-          "chassisshield_twenty_http_search_opportunity"
+          "lc_cs_route_followup"
         ],
         [
           "chassisshield_contact_gotify_push"
@@ -156,7 +156,7 @@
       "type": "function",
       "z": "website_leads_tab",
       "name": "Build Opportunity Upsert Request",
-      "func": "const searchData = msg.payload;\nconst existing = searchData && searchData.data && searchData.data.opportunities && searchData.data.opportunities[0];\nmsg.existingOpportunityId = existing ? existing.id : '';\n\nconst data = msg.originalPayload;\nconst isEnrichment = !!data.isEnrichment;\nconst skipped = !!data.skipped;\nconst displayName = data.name || data.email;\n\nconst headers = {\n    \"Authorization\": \"Bearer \" + env.get(\"CHASSISSHIELD_TWENTY_TOKEN\"),\n    \"Host\": \"chassisshield.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\n\nif (!isEnrichment) {\n    // Step 1: create the Opportunity right away, marked incomplete.\n    // If one already exists (e.g. a retried Step 1 call), there's nothing to do.\n    if (msg.existingOpportunityId) {\n        return null;\n    }\n    msg.opportunityCase = 'incomplete';\n    msg.method = \"POST\";\n    msg.url = \"http://bodhi.lab:3100/rest/opportunities\";\n    msg.payload = {\n        name: `ChassisShield Waitlist (Profile Incomplete): ${displayName}`,\n        stage: \"SCREENING\",\n        pointOfContactId: msg.personId\n    };\n} else if (skipped) {\n    msg.opportunityCase = 'skipped';\n    msg.payload = {\n        name: `ChassisShield Waitlist (Skipped Profile): ${displayName}`,\n        stage: \"SCREENING\"\n    };\n    if (msg.existingOpportunityId) {\n        msg.method = \"PATCH\";\n        msg.url = `http://bodhi.lab:3100/rest/opportunities/${msg.existingOpportunityId}`;\n    } else {\n        msg.method = \"POST\";\n        msg.url = \"http://bodhi.lab:3100/rest/opportunities\";\n        msg.payload.pointOfContactId = msg.personId;\n    }\n} else {\n    msg.opportunityCase = 'enriched';\n    msg.payload = {\n        name: `ChassisShield Waitlist: ${displayName}`,\n        stage: \"MEETING\"\n    };\n    if (msg.existingOpportunityId) {\n        msg.method = \"PATCH\";\n        msg.url = `http://bodhi.lab:3100/rest/opportunities/${msg.existingOpportunityId}`;\n    } else {\n        msg.method = \"POST\";\n        msg.url = \"http://bodhi.lab:3100/rest/opportunities\";\n        msg.payload.pointOfContactId = msg.personId;\n    }\n}\n\nmsg.headers = headers;\nreturn msg;",
+      "func": "const searchData = msg.payload;\nconst existing = searchData && searchData.data && searchData.data.opportunities && searchData.data.opportunities[0];\nmsg.existingOpportunityId = existing ? existing.id : '';\n\nconst data = msg.originalPayload;\nconst isEnrichment = !!data.isEnrichment;\nconst skipped = !!data.skipped;\nconst displayName = data.name || data.email;\n\n\nif (!isEnrichment) {\n    // Step 1: create the Opportunity right away, marked incomplete.\n    // If one already exists (e.g. a retried Step 1 call), there's nothing to do.\n    if (msg.existingOpportunityId) {\n        return null;\n    }\n    msg.opportunityCase = 'incomplete';\n    msg.method = \"POST\";\n    msg.url = \"http://bodhi.lab:3100/rest/opportunities\";\n    msg.payload = {\n        name: `ChassisShield Waitlist (Profile Incomplete): ${displayName}`,\n        stage: \"SCREENING\",\n        pointOfContactId: msg.personId\n    };\n} else if (skipped) {\n    msg.opportunityCase = 'skipped';\n    msg.payload = {\n        name: `ChassisShield Waitlist (Skipped Profile): ${displayName}`,\n        stage: \"SCREENING\"\n    };\n    if (msg.existingOpportunityId) {\n        msg.method = \"PATCH\";\n        msg.url = `http://bodhi.lab:3100/rest/opportunities/${msg.existingOpportunityId}`;\n    } else {\n        msg.method = \"POST\";\n        msg.url = \"http://bodhi.lab:3100/rest/opportunities\";\n        msg.payload.pointOfContactId = msg.personId;\n    }\n} else {\n    msg.opportunityCase = 'enriched';\n    msg.payload = {\n        name: `ChassisShield Waitlist: ${displayName}`,\n        stage: \"MEETING\"\n    };\n    if (msg.existingOpportunityId) {\n        msg.method = \"PATCH\";\n        msg.url = `http://bodhi.lab:3100/rest/opportunities/${msg.existingOpportunityId}`;\n    } else {\n        msg.method = \"POST\";\n        msg.url = \"http://bodhi.lab:3100/rest/opportunities\";\n        msg.payload.pointOfContactId = msg.personId;\n    }\n}\n\nreturn msg;",
       "outputs": 1,
       "timeout": 0,
       "noerr": 0,
@@ -167,7 +167,7 @@
       "y": 340,
       "wires": [
         [
-          "chassisshield_twenty_http_opportunity"
+          "lc_cs_prep_opp"
         ]
       ]
     },
@@ -326,7 +326,7 @@
       "type": "function",
       "z": "website_leads_tab",
       "name": "Prepare Opportunity",
-      "func": "const person = msg.payload && msg.payload.data && (msg.payload.data.createPerson || msg.payload.data.updatePerson);\nconst personId = person ? person.id : '';\nmsg.personId = personId;\n\nif (!personId) {\n    node.warn(\"CurbClass: Person create/update failed - \" + JSON.stringify(msg.payload));\n\n    const lead = msg.originalPayload || {};\n    msg.title = \"\\u26a0\\ufe0f CurbClass CRM Sync FAILED\";\n    msg.priority = 9;\n    msg.payload = `Lead from ${lead.name || 'Unknown'} (${lead.email || 'no email'}) did NOT sync to CRM.\\n\\nTwenty API response:\\n${JSON.stringify(msg.payload)}`;\n    return [null, msg]; // Stop the CRM chain, send a Gotify alert instead\n}\n\nlet intakeDetails = `Product: ${msg.originalPayload.product || 'General inquiry'}\\n`;\nif (msg.originalPayload.message) {\n    intakeDetails += `\\nMessage:\\n${msg.originalPayload.message}\\n`;\n}\nif (msg.originalPayload.imageUrls && msg.originalPayload.imageUrls.length > 0) {\n    intakeDetails += `\\nProperty Photos:\\n`;\n    msg.originalPayload.imageUrls.forEach((url, i) => {\n        intakeDetails += `- Photo ${i + 1}: ${url}\\n`;\n    });\n}\n\nmsg.method = \"POST\";\nmsg.url = \"http://bodhi.lab:3100/rest/opportunities\";\nmsg.payload = {\n    name: \"CurbClass: \" + (msg.originalPayload.name || \"New Lead\"),\n    stage: \"NEW\",\n    pointOfContactId: personId,\n    intakeDetails: intakeDetails\n};\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + env.get(\"CURBCLASS_TWENTY_TOKEN\"),\n    \"Host\": \"curbclass.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\n\nreturn [msg, null];",
+      "func": "const person = msg.payload && msg.payload.data && (msg.payload.data.createPerson || msg.payload.data.updatePerson);\nconst personId = person ? person.id : '';\nmsg.personId = personId;\n\nif (!personId) {\n    node.warn(\"CurbClass: Person create/update failed - \" + JSON.stringify(msg.payload));\n\n    const lead = msg.originalPayload || {};\n    msg.title = \"\\u26a0\\ufe0f CurbClass CRM Sync FAILED\";\n    msg.priority = 9;\n    msg.payload = `Lead from ${lead.name || 'Unknown'} (${lead.email || 'no email'}) did NOT sync to CRM.\\n\\nTwenty API response:\\n${JSON.stringify(msg.payload)}`;\n    return [null, msg]; // Stop the CRM chain, send a Gotify alert instead\n}\n\nlet intakeDetails = `Product: ${msg.originalPayload.product || 'General inquiry'}\\n`;\nif (msg.originalPayload.message) {\n    intakeDetails += `\\nMessage:\\n${msg.originalPayload.message}\\n`;\n}\nif (msg.originalPayload.imageUrls && msg.originalPayload.imageUrls.length > 0) {\n    intakeDetails += `\\nProperty Photos:\\n`;\n    msg.originalPayload.imageUrls.forEach((url, i) => {\n        intakeDetails += `- Photo ${i + 1}: ${url}\\n`;\n    });\n}\n\nmsg.method = \"POST\";\nmsg.url = \"http://bodhi.lab:3100/rest/opportunities\";\nmsg.payload = {\n    name: \"CurbClass: \" + (msg.originalPayload.name || \"New Lead\"),\n    stage: \"NEW\",\n    pointOfContactId: personId,\n    intakeDetails: intakeDetails\n};\n\nreturn [msg, null];",
       "outputs": 2,
       "timeout": 0,
       "noerr": 0,
@@ -337,7 +337,7 @@
       "y": 700,
       "wires": [
         [
-          "curbclass_twenty_http_opportunity"
+          "lc_cc_prep_opp"
         ],
         [
           "curbclass_contact_gotify_push"
@@ -909,7 +909,7 @@
       "type": "function",
       "z": "website_leads_tab",
       "name": "Prepare Twenty Person Update",
-      "func": "const client = msg.payload && msg.payload.data;\nconst clientId = client ? (client.hashed_id || client.id) : '';\n\nif (!clientId) {\n    node.warn(\"CurbClass: Failed to create client in Invoice Ninja\");\n    return null;\n}\n\nmsg.method = \"PATCH\";\nmsg.url = `http://bodhi.lab:3100/rest/people/${msg.personId}`;\nmsg.payload = {\n    invoiceNinjaClientId: clientId\n};\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + env.get(\"CURBCLASS_TWENTY_TOKEN\"),\n    \"Host\": \"curbclass.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\n\nreturn msg;",
+      "func": "const client = msg.payload && msg.payload.data;\nconst clientId = client ? (client.hashed_id || client.id) : '';\n\nif (!clientId) {\n    node.warn(\"CurbClass: Failed to create client in Invoice Ninja\");\n    return null;\n}\n\nmsg.method = \"PATCH\";\nmsg.url = `http://bodhi.lab:3100/rest/people/${msg.personId}`;\nmsg.payload = {\n    invoiceNinjaClientId: clientId\n};\n\nreturn msg;",
       "outputs": 1,
       "noerr": 0,
       "initialize": "",
@@ -919,7 +919,7 @@
       "y": 880,
       "wires": [
         [
-          "curbclass_twenty_update_person_ninja_id_http"
+          "lc_cc_update_ninja"
         ]
       ]
     },
@@ -1946,10 +1946,10 @@
       "y": 2000,
       "wires": [
         [
-          "curbclass_reconcile_patch_person_http"
+          "lc_cc_reconcile_backfill"
         ]
       ],
-      "func": "const people = msg.payload && msg.payload.data && msg.payload.data.people;\nconst person = people && people[0];\nif (!person || person.invoiceNinjaClientId) {\n    return null; // no match, or already linked\n}\n\nnode.warn(`CurbClass Reconciliation: Backfilling invoiceNinjaClientId=${msg.ninjaClientId} for person ${person.id}`);\n\nmsg.method = \"PATCH\";\nmsg.url = `http://bodhi.lab:3100/rest/people/${person.id}`;\nmsg.payload = { invoiceNinjaClientId: msg.ninjaClientId };\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + env.get(\"CURBCLASS_TWENTY_TOKEN\"),\n    \"Host\": \"curbclass.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\nreturn msg;"
+      "func": "const people = msg.payload && msg.payload.data && msg.payload.data.people;\nconst person = people && people[0];\nif (!person || person.invoiceNinjaClientId) {\n    return null; // no match, or already linked\n}\n\nnode.warn(`CurbClass Reconciliation: Backfilling invoiceNinjaClientId=${msg.ninjaClientId} for person ${person.id}`);\n\nmsg.method = \"PATCH\";\nmsg.url = `http://bodhi.lab:3100/rest/people/${person.id}`;\nmsg.payload = { invoiceNinjaClientId: msg.ninjaClientId };\nreturn msg;"
     },
     {
       "type": "http request",
@@ -2018,6 +2018,184 @@
         ]
       ],
       "func": "const p = msg.payload || {};\nconst email = (p.email || '').trim();\n\nif (!email) {\n    const errMsg = Object.assign({}, msg);\n    errMsg.statusCode = 400;\n    errMsg.payload = {\n        success: false,\n        error: 'Missing required field: email'\n    };\n    errMsg.headers = { 'Content-Type': 'application/json' };\n    return [null, errMsg];\n}\n\nreturn [msg, null];"
+    },
+    {
+      "id": "cc_twenty_hdr_in",
+      "type": "link in",
+      "z": "website_leads_tab",
+      "name": "CurbClass Twenty Headers",
+      "links": [],
+      "x": 380,
+      "y": 2200,
+      "wires": [
+        [
+          "cc_twenty_hdr_fn"
+        ]
+      ]
+    },
+    {
+      "id": "cc_twenty_hdr_fn",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Set CurbClass Auth Headers",
+      "func": "msg.headers = Object.assign(msg.headers || {}, {\n    \"Authorization\": \"Bearer \" + env.get(\"CURBCLASS_TWENTY_TOKEN\"),\n    \"Host\": \"curbclass.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n});\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 620,
+      "y": 2200,
+      "wires": [
+        [
+          "cc_twenty_hdr_out"
+        ]
+      ]
+    },
+    {
+      "id": "cc_twenty_hdr_out",
+      "type": "link out",
+      "z": "website_leads_tab",
+      "name": "CurbClass Twenty Headers (return)",
+      "mode": "return",
+      "links": [],
+      "x": 880,
+      "y": 2200
+    },
+    {
+      "id": "cs_twenty_hdr_in",
+      "type": "link in",
+      "z": "website_leads_tab",
+      "name": "ChassisShield Twenty Headers",
+      "links": [],
+      "x": 380,
+      "y": 2260,
+      "wires": [
+        [
+          "cs_twenty_hdr_fn"
+        ]
+      ]
+    },
+    {
+      "id": "cs_twenty_hdr_fn",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Set ChassisShield Auth Headers",
+      "func": "msg.headers = Object.assign(msg.headers || {}, {\n    \"Authorization\": \"Bearer \" + env.get(\"CHASSISSHIELD_TWENTY_TOKEN\"),\n    \"Host\": \"chassisshield.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n});\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 620,
+      "y": 2260,
+      "wires": [
+        [
+          "cs_twenty_hdr_out"
+        ]
+      ]
+    },
+    {
+      "id": "cs_twenty_hdr_out",
+      "type": "link out",
+      "z": "website_leads_tab",
+      "name": "ChassisShield Twenty Headers (return)",
+      "mode": "return",
+      "links": [],
+      "x": 880,
+      "y": 2260
+    },
+    {
+      "id": "lc_cs_route_followup",
+      "type": "link call",
+      "z": "website_leads_tab",
+      "name": "Add Twenty Auth Headers",
+      "links": [
+        "cs_twenty_hdr_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 1200,
+      "y": 340,
+      "wires": [
+        [
+          "chassisshield_twenty_http_search_opportunity"
+        ]
+      ]
+    },
+    {
+      "id": "lc_cs_prep_opp",
+      "type": "link call",
+      "z": "website_leads_tab",
+      "name": "Add Twenty Auth Headers",
+      "links": [
+        "cs_twenty_hdr_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 1840,
+      "y": 340,
+      "wires": [
+        [
+          "chassisshield_twenty_http_opportunity"
+        ]
+      ]
+    },
+    {
+      "id": "lc_cc_prep_opp",
+      "type": "link call",
+      "z": "website_leads_tab",
+      "name": "Add Twenty Auth Headers",
+      "links": [
+        "cc_twenty_hdr_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 1080,
+      "y": 700,
+      "wires": [
+        [
+          "curbclass_twenty_http_opportunity"
+        ]
+      ]
+    },
+    {
+      "id": "lc_cc_update_ninja",
+      "type": "link call",
+      "z": "website_leads_tab",
+      "name": "Add Twenty Auth Headers",
+      "links": [
+        "cc_twenty_hdr_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 1750,
+      "y": 880,
+      "wires": [
+        [
+          "curbclass_twenty_update_person_ninja_id_http"
+        ]
+      ]
+    },
+    {
+      "id": "lc_cc_reconcile_backfill",
+      "type": "link call",
+      "z": "website_leads_tab",
+      "name": "Add Twenty Auth Headers",
+      "links": [
+        "cc_twenty_hdr_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 1890,
+      "y": 2000,
+      "wires": [
+        [
+          "curbclass_reconcile_patch_person_http"
+        ]
+      ]
     }
   ]
 }
