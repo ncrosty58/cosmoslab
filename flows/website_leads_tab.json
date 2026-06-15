@@ -1,0 +1,2023 @@
+{
+  "id": "website_leads_tab",
+  "label": "Website Leads",
+  "disabled": false,
+  "info": "Endpoint webhooks and Gotify notification routing for Chassis Shield and Curb Class website lead forms. Both pipelines: webhook -> Gotify push (notification) + Twenty CRM person/opportunity sync (response). Chassis Shield two-step signup: step 1 (register) creates/updates the Person and an Opportunity marked 'Profile Incomplete' (stage: Enrichment Pending). Step 2 (enrich) finds-or-creates that Opportunity, updates it to 'Profile Enriched' (stage: Profile Enriched) with the real name, and adds an enrichment Note plus a follow-up Task (due in 24h), both linked to the Person and Opportunity. A skipped Step 2 finds-or-creates the Opportunity marked 'Skipped Profile' (stage stays Enrichment Pending) and adds a lightweight follow-up Task (no enrichment Note). Curb Class also creates a Note (+ photo attachments) and a follow-up Task on the Opportunity. Twenty API tokens are stored as flow credentials (encrypted), not plaintext env values. Partial failures in the Twenty sync chain (failed Person/Opportunity/Note/Task/link creation) are logged via node.warn for visibility without affecting the HTTP response already sent to the website. Errors anywhere in the primary pipeline are caught by the shared catch node so the originating HTTP request always gets a response.",
+  "env": [
+    {
+      "name": "CHASSISSHIELD_TWENTY_TOKEN",
+      "type": "cred"
+    },
+    {
+      "name": "CURBCLASS_TWENTY_TOKEN",
+      "type": "cred"
+    },
+    {
+      "name": "GEMINI_API_KEY",
+      "type": "cred"
+    },
+    {
+      "name": "CURBCLASS_INVOICENINJA_TOKEN",
+      "type": "cred"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "chassisshield_http_in",
+      "type": "http in",
+      "z": "website_leads_tab",
+      "name": "Chassis Shield Contact Webhook",
+      "url": "/api/chassisshield/contact",
+      "method": "post",
+      "upload": false,
+      "skipBodyParsing": false,
+      "swaggerDoc": "",
+      "x": 190,
+      "y": 380,
+      "wires": [
+        [
+          "chassisshield_validate_contact"
+        ]
+      ]
+    },
+    {
+      "id": "chassisshield_contact_format",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Format Chassis Shield Lead",
+      "func": "const isEnrichment = msg.payload.isEnrichment;\nconst skipped = msg.payload.skipped;\n\nif (skipped) {\n    msg.title = `ChassisShield Lead (Step 2 Skipped): ${msg.payload.email}`;\n    msg.payload = `Email: ${msg.payload.email}\\n\\nUser skipped profile enrichment (Step 2). Opportunity marked 'Skipped Profile' (Enrichment Pending) with a follow-up task to reach out manually.`;\n} else if (isEnrichment) {\n    msg.title = `ChassisShield Lead Enriched: ${msg.payload.name || msg.payload.email}`;\n    msg.payload = `Name: ${msg.payload.name || 'Not specified'}\\nEmail: ${msg.payload.email}\\nVehicle: ${msg.payload.carType || 'Not specified'}\\nLocation: ${msg.payload.location || 'Not specified'}\\nComments: ${msg.payload.comments || 'None'}`;\n} else {\n    msg.title = `New ChassisShield Lead: ${msg.payload.email}`;\n    msg.payload = `New waitlist signup:\\nEmail: ${msg.payload.email}\\nLocation: ${msg.payload.location || 'Not specified'}\\n\\nAwaiting Step 2 details.`;\n}\nmsg.priority = 6;\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 520,
+      "y": 440,
+      "wires": [
+        [
+          "chassisshield_contact_gotify_push"
+        ]
+      ]
+    },
+    {
+      "id": "chassisshield_contact_gotify_push",
+      "type": "gotify-push",
+      "z": "website_leads_tab",
+      "name": "Send to Gotify",
+      "title": "",
+      "message": "",
+      "priority": 5,
+      "extras": "",
+      "client": "",
+      "override": false,
+      "server": "gotify_chassisshield_config",
+      "x": 1280,
+      "y": 440,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "chassisshield_twenty_prepare_search",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Lead Data",
+      "func": "msg.originalPayload = msg.payload; // Save for Opportunity/Note creation later\nconst name = (msg.payload.name || '').trim();\nconst email = (msg.payload.email || '').trim().toLowerCase();\n\nconst nameParts = name.split(' ');\nconst firstName = nameParts[0] || 'Waitlist';\nconst lastName = nameParts.slice(1).join(' ') || 'Lead';\n\nmsg.lead = {\n    firstName: firstName,\n    lastName: lastName,\n    email: email\n};\nmsg.jobTitle = \"Chassis Shield Lead\";\nmsg.twentyToken = env.get(\"CHASSISSHIELD_TWENTY_TOKEN\");\nmsg.twentyHost = \"chassisshield.localhost:3000\";\n\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 490,
+      "y": 300,
+      "wires": [
+        [
+          "chassisshield_person_upsert"
+        ]
+      ]
+    },
+    {
+      "id": "chassisshield_twenty_format_response",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Format ChassisShield Response",
+      "func": "const person = msg.payload && msg.payload.data && (msg.payload.data.createPerson || msg.payload.data.updatePerson);\nconst personId = person ? person.id : '';\nmsg.payload = {\n    success: true,\n    twentyUrl: personId ? `https://chassisshield.crm.cosmoslab.dev/object/person/${personId}` : ''\n};\nmsg.statusCode = 200;\nmsg.headers = {\n    'Content-Type': 'application/json'\n};\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1060,
+      "y": 260,
+      "wires": [
+        [
+          "chassisshield_contact_http_response"
+        ]
+      ]
+    },
+    {
+      "id": "chassisshield_contact_http_response",
+      "type": "http response",
+      "z": "website_leads_tab",
+      "name": "HTTP Response 200",
+      "statusCode": "200",
+      "x": 1460,
+      "y": 260,
+      "wires": []
+    },
+    {
+      "id": "chassisshield_twenty_route_followup",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Opportunity Search",
+      "func": "const person = msg.payload && msg.payload.data && (msg.payload.data.createPerson || msg.payload.data.updatePerson);\nconst personId = person ? person.id : '';\nmsg.personId = personId;\n\nif (!personId) {\n    node.warn(\"ChassisShield: Person create/update failed - \" + JSON.stringify(msg.payload));\n\n    const lead = msg.originalPayload || {};\n    msg.title = \"\\u26a0\\ufe0f ChassisShield CRM Sync FAILED\";\n    msg.priority = 9;\n    msg.payload = `Lead (${lead.email || 'no email'}, ${lead.name || 'Unknown'}) did NOT sync to CRM.\\n\\nTwenty API response:\\n${JSON.stringify(msg.payload)}`;\n    return [null, msg]; // Stop the CRM chain, send a Gotify alert instead\n}\n\nmsg.method = \"GET\";\nmsg.url = `http://bodhi.lab:3100/rest/opportunities?filter=pointOfContact.id[eq]:${encodeURIComponent(personId)}`;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + env.get(\"CHASSISSHIELD_TWENTY_TOKEN\"),\n    \"Host\": \"chassisshield.localhost:3000\"\n};\n\nreturn [msg, null];",
+      "outputs": 2,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1040,
+      "y": 340,
+      "wires": [
+        [
+          "chassisshield_twenty_http_search_opportunity"
+        ],
+        [
+          "chassisshield_contact_gotify_push"
+        ]
+      ]
+    },
+    {
+      "id": "chassisshield_twenty_prepare_opportunity",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Build Opportunity Upsert Request",
+      "func": "const searchData = msg.payload;\nconst existing = searchData && searchData.data && searchData.data.opportunities && searchData.data.opportunities[0];\nmsg.existingOpportunityId = existing ? existing.id : '';\n\nconst data = msg.originalPayload;\nconst isEnrichment = !!data.isEnrichment;\nconst skipped = !!data.skipped;\nconst displayName = data.name || data.email;\n\nconst headers = {\n    \"Authorization\": \"Bearer \" + env.get(\"CHASSISSHIELD_TWENTY_TOKEN\"),\n    \"Host\": \"chassisshield.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\n\nif (!isEnrichment) {\n    // Step 1: create the Opportunity right away, marked incomplete.\n    // If one already exists (e.g. a retried Step 1 call), there's nothing to do.\n    if (msg.existingOpportunityId) {\n        return null;\n    }\n    msg.opportunityCase = 'incomplete';\n    msg.method = \"POST\";\n    msg.url = \"http://bodhi.lab:3100/rest/opportunities\";\n    msg.payload = {\n        name: `ChassisShield Waitlist (Profile Incomplete): ${displayName}`,\n        stage: \"SCREENING\",\n        pointOfContactId: msg.personId\n    };\n} else if (skipped) {\n    msg.opportunityCase = 'skipped';\n    msg.payload = {\n        name: `ChassisShield Waitlist (Skipped Profile): ${displayName}`,\n        stage: \"SCREENING\"\n    };\n    if (msg.existingOpportunityId) {\n        msg.method = \"PATCH\";\n        msg.url = `http://bodhi.lab:3100/rest/opportunities/${msg.existingOpportunityId}`;\n    } else {\n        msg.method = \"POST\";\n        msg.url = \"http://bodhi.lab:3100/rest/opportunities\";\n        msg.payload.pointOfContactId = msg.personId;\n    }\n} else {\n    msg.opportunityCase = 'enriched';\n    msg.payload = {\n        name: `ChassisShield Waitlist: ${displayName}`,\n        stage: \"MEETING\"\n    };\n    if (msg.existingOpportunityId) {\n        msg.method = \"PATCH\";\n        msg.url = `http://bodhi.lab:3100/rest/opportunities/${msg.existingOpportunityId}`;\n    } else {\n        msg.method = \"POST\";\n        msg.url = \"http://bodhi.lab:3100/rest/opportunities\";\n        msg.payload.pointOfContactId = msg.personId;\n    }\n}\n\nmsg.headers = headers;\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1680,
+      "y": 340,
+      "wires": [
+        [
+          "chassisshield_twenty_http_opportunity"
+        ]
+      ]
+    },
+    {
+      "id": "chassisshield_twenty_http_opportunity",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "name": "Create/Update Opportunity",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 2000,
+      "y": 340,
+      "wires": [
+        [
+          "chassisshield_twenty_route_post_opportunity"
+        ]
+      ]
+    },
+    {
+      "id": "chassisshield_twenty_prepare_enrichment_note",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Enrichment Note",
+      "func": "const data = msg.originalPayload;\n\nlet markdown = `**Vehicle:** ${data.carType || 'Not specified'}\\n`;\nmarkdown += `**Location:** ${data.location || 'Not specified'}\\n\\n`;\nif (data.comments) {\n    markdown += `**Comments:**\\n${data.comments}\\n`;\n}\n\nmsg.noteTitle = \"Chassis Shield Waitlist Enrichment\";\nmsg.noteMarkdown = markdown;\nmsg.twentyToken = env.get(\"CHASSISSHIELD_TWENTY_TOKEN\");\nmsg.twentyHost = \"chassisshield.localhost:3000\";\n\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 2610,
+      "y": 300,
+      "wires": [
+        [
+          "chassisshield_note_link"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_http_in",
+      "type": "http in",
+      "z": "website_leads_tab",
+      "name": "Curb Class Contact Webhook",
+      "url": "/api/curbclass/contact",
+      "method": "post",
+      "upload": false,
+      "skipBodyParsing": false,
+      "swaggerDoc": "",
+      "x": 140,
+      "y": 760,
+      "wires": [
+        [
+          "curbclass_validate_contact"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_contact_format",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Format Curb Class Lead",
+      "func": "msg.title = `New CurbClass Lead: ${msg.payload.name || 'New Lead'}`;\nmsg.priority = 6;\nconst product = msg.payload.product || 'General inquiry';\nconst scheduleMatch = product.match(/Schedule:\\s*([^|]+)/);\nconst scheduleLine = scheduleMatch ? `\\nSchedule: ${scheduleMatch[1].trim()}` : '';\nmsg.payload = `Name: ${msg.payload.name}\\nEmail: ${msg.payload.email}\\nPhone: ${msg.payload.phone}\\nProduct: ${product}\\nMessage: ${msg.payload.message || 'No message provided.'}${scheduleLine}`;\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 450,
+      "y": 780,
+      "wires": [
+        [
+          "curbclass_contact_gotify_push"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_contact_gotify_push",
+      "type": "gotify-push",
+      "z": "website_leads_tab",
+      "name": "Send to Gotify",
+      "title": "",
+      "message": "",
+      "priority": 5,
+      "extras": "",
+      "client": "",
+      "override": false,
+      "server": "gotify_curbclass_config",
+      "x": 1200,
+      "y": 780,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "curbclass_twenty_prepare_search",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Lead Data",
+      "func": "msg.originalPayload = msg.payload; // Save for Note creation later\nconst name = (msg.payload.name || '').trim();\nconst email = (msg.payload.email || '').trim().toLowerCase();\nlet phone = (msg.payload.phone || '').trim();\n\n// Normalize and validate phone to E.164\nlet validPhone = null;\nconst cleanPhone = phone.replace(/\\D/g, '');\nif (cleanPhone.length === 10) {\n    validPhone = '+1' + cleanPhone;\n} else if (cleanPhone.length > 10) {\n    validPhone = phone.startsWith('+') ? phone : '+' + cleanPhone;\n}\n\nconst nameParts = name.split(' ');\nconst firstName = nameParts[0] || '';\nconst lastName = nameParts.slice(1).join(' ') || 'Lead';\n\nmsg.lead = {\n    firstName: firstName,\n    lastName: lastName,\n    email: email,\n    phone: validPhone\n};\nmsg.jobTitle = \"Curb Class Lead\";\nmsg.twentyToken = env.get(\"CURBCLASS_TWENTY_TOKEN\");\nmsg.twentyHost = \"curbclass.localhost:3000\";\n\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 410,
+      "y": 700,
+      "wires": [
+        [
+          "curbclass_person_upsert"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_format_response",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Format CurbClass Response",
+      "func": "const person = msg.payload && msg.payload.data && (msg.payload.data.createPerson || msg.payload.data.updatePerson);\nconst personId = person ? person.id : '';\nmsg.payload = {\n    success: true,\n    twentyUrl: personId ? `https://crm.cosmoslab.dev/object/person/${personId}` : ''\n};\nmsg.statusCode = 200;\nmsg.headers = {\n    'Content-Type': 'application/json'\n};\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1000,
+      "y": 580,
+      "wires": [
+        [
+          "curbclass_contact_http_response"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_contact_http_response",
+      "type": "http response",
+      "z": "website_leads_tab",
+      "name": "HTTP Response 200",
+      "statusCode": "200",
+      "x": 1260,
+      "y": 580,
+      "wires": []
+    },
+    {
+      "id": "curbclass_twenty_prepare_opportunity",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Opportunity",
+      "func": "const person = msg.payload && msg.payload.data && (msg.payload.data.createPerson || msg.payload.data.updatePerson);\nconst personId = person ? person.id : '';\nmsg.personId = personId;\n\nif (!personId) {\n    node.warn(\"CurbClass: Person create/update failed - \" + JSON.stringify(msg.payload));\n\n    const lead = msg.originalPayload || {};\n    msg.title = \"\\u26a0\\ufe0f CurbClass CRM Sync FAILED\";\n    msg.priority = 9;\n    msg.payload = `Lead from ${lead.name || 'Unknown'} (${lead.email || 'no email'}) did NOT sync to CRM.\\n\\nTwenty API response:\\n${JSON.stringify(msg.payload)}`;\n    return [null, msg]; // Stop the CRM chain, send a Gotify alert instead\n}\n\nlet intakeDetails = `Product: ${msg.originalPayload.product || 'General inquiry'}\\n`;\nif (msg.originalPayload.message) {\n    intakeDetails += `\\nMessage:\\n${msg.originalPayload.message}\\n`;\n}\nif (msg.originalPayload.imageUrls && msg.originalPayload.imageUrls.length > 0) {\n    intakeDetails += `\\nProperty Photos:\\n`;\n    msg.originalPayload.imageUrls.forEach((url, i) => {\n        intakeDetails += `- Photo ${i + 1}: ${url}\\n`;\n    });\n}\n\nmsg.method = \"POST\";\nmsg.url = \"http://bodhi.lab:3100/rest/opportunities\";\nmsg.payload = {\n    name: \"CurbClass: \" + (msg.originalPayload.name || \"New Lead\"),\n    stage: \"NEW\",\n    pointOfContactId: personId,\n    intakeDetails: intakeDetails\n};\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + env.get(\"CURBCLASS_TWENTY_TOKEN\"),\n    \"Host\": \"curbclass.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\n\nreturn [msg, null];",
+      "outputs": 2,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 960,
+      "y": 700,
+      "wires": [
+        [
+          "curbclass_twenty_http_opportunity"
+        ],
+        [
+          "curbclass_contact_gotify_push"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_http_opportunity",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "name": "Create Opportunity",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1190,
+      "y": 700,
+      "wires": [
+        [
+          "curbclass_twenty_prepare_note",
+          "curbclass_twenty_prepare_attachments",
+          "curbclass_twenty_prepare_task"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_prepare_note",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Note",
+      "func": "const opp = msg.payload && msg.payload.data && msg.payload.data.createOpportunity;\nconst oppId = opp ? opp.id : '';\nmsg.opportunityId = oppId;\n\nif (!oppId) {\n    node.warn(\"CurbClass: Opportunity creation failed - \" + JSON.stringify(msg.payload && msg.payload.errors));\n}\n\nif (!msg.personId || (!msg.originalPayload.message && (!msg.originalPayload.imageUrls || msg.originalPayload.imageUrls.length === 0))) {\n    return null; // Skip if nothing to record\n}\n\nlet markdown = `**Product:** ${msg.originalPayload.product || 'General inquiry'}\\n\\n`;\nif (msg.originalPayload.message) {\n    markdown += `**Message:**\\n${msg.originalPayload.message}\\n\\n`;\n}\nif (msg.originalPayload.imageUrls && msg.originalPayload.imageUrls.length > 0) {\n    markdown += `**Property Photos:**\\n`;\n    msg.originalPayload.imageUrls.forEach((url, i) => {\n        markdown += `- [Photo ${i + 1}](${url})\\n`;\n    });\n}\n\nmsg.noteTitle = \"CurbClass Inquiry Details\";\nmsg.noteMarkdown = markdown;\nmsg.twentyToken = env.get(\"CURBCLASS_TWENTY_TOKEN\");\nmsg.twentyHost = \"curbclass.localhost:3000\";\n\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1430,
+      "y": 640,
+      "wires": [
+        [
+          "curbclass_note_link"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_prepare_attachments",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Attachments",
+      "func": "const opp = msg.payload && msg.payload.data && msg.payload.data.createOpportunity;\nconst oppId = opp ? opp.id : '';\n\nif (!oppId || !msg.originalPayload.imageUrls || msg.originalPayload.imageUrls.length === 0) {\n    return null;\n}\n\nconst token = env.get(\"CURBCLASS_TWENTY_TOKEN\");\nconst fieldMetadataId = \"951c6783-41fd-4f2c-ba4f-f250fcb0fb9e\"; // CurbClass file field metadata ID\n\n(async () => {\n    try {\n        for (let i = 0; i < msg.originalPayload.imageUrls.length; i++) {\n            const url = msg.originalPayload.imageUrls[i];\n            const filename = url.substring(url.lastIndexOf('/') + 1);\n            \n            // 1. Fetch the image from local server / cosmoslab.dev\n            const response = await axios.get(url, { responseType: 'arraybuffer' });\n            const buffer = Buffer.from(response.data);\n            \n            // 2. Upload to Twenty Metadata endpoint\n            const form = new FormData();\n            form.append('operations', JSON.stringify({\n                operationName: \"UploadFilesFieldFile\",\n                variables: {\n                    file: null,\n                    fieldMetadataId: fieldMetadataId\n                },\n                query: \"mutation UploadFilesFieldFile($file: Upload!, $fieldMetadataId: String!) { uploadFilesFieldFile(file: $file, fieldMetadataId: $fieldMetadataId) { id } }\"\n            }));\n            form.append('map', JSON.stringify({\n                \"1\": [\"variables.file\"]\n            }));\n            form.append('1', buffer, { filename: filename, contentType: 'image/jpeg' });\n            \n            const uploadRes = await axios.post('http://bodhi.lab:3100/metadata', form, {\n                headers: {\n                    ...form.getHeaders(),\n                    'Authorization': `Bearer ${token}`,\n                    'Host': 'curbclass.localhost:3000'\n                }\n            });\n            \n            const fileId = uploadRes.data && uploadRes.data.data && uploadRes.data.data.uploadFilesFieldFile && uploadRes.data.data.uploadFilesFieldFile.id;\n            if (!fileId) {\n                node.warn(\"CurbClass: Did not receive fileId for: \" + filename);\n                continue;\n            }\n            \n            // 3. Create Attachment record via REST\n            const attachRes = await axios.post('http://bodhi.lab:3100/rest/attachments', {\n                name: filename,\n                fullPath: url,\n                targetOpportunityId: oppId,\n                fileCategory: \"IMAGE\",\n                file: [\n                    {\n                        fileId: fileId,\n                        label: filename\n                    }\n                ]\n            }, {\n                headers: {\n                    'Authorization': `Bearer ${token}`,\n                    'Host': 'curbclass.localhost:3000',\n                    'Content-Type': 'application/json'\n                }\n            });\n            \n            if (attachRes.status !== 201) {\n                node.warn(\"CurbClass: Failed to create attachment for: \" + filename + \" status: \" + attachRes.status);\n            }\n        }\n    } catch (err) {\n        node.warn(\"CurbClass: Error in prepare attachments async function: \" + err.message);\n    }\n})();\n\nreturn null;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "libs": [
+        {
+          "var": "axios",
+          "module": "axios"
+        },
+        {
+          "var": "FormData",
+          "module": "form-data"
+        }
+      ],
+      "x": 1460,
+      "y": 700,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "weblead_catch_errors",
+      "type": "catch",
+      "z": "website_leads_tab",
+      "name": "Catch Lead Processing Errors",
+      "scope": null,
+      "uncaught": false,
+      "x": 480,
+      "y": 1820,
+      "wires": [
+        [
+          "weblead_error_response"
+        ]
+      ]
+    },
+    {
+      "id": "weblead_error_response",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Format Error Response",
+      "func": "const err = msg.error || {};\nnode.error(\"Web lead processing error: \" + (err.message || err), msg);\n\nmsg.statusCode = 500;\nmsg.payload = {\n    success: false,\n    error: 'Failed to process lead.'\n};\nmsg.headers = {\n    'Content-Type': 'application/json'\n};\n\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 780,
+      "y": 1820,
+      "wires": [
+        [
+          "weblead_http_response_error"
+        ]
+      ]
+    },
+    {
+      "id": "weblead_http_response_error",
+      "type": "http response",
+      "z": "website_leads_tab",
+      "name": "HTTP Response (Error)",
+      "statusCode": "",
+      "x": 1090,
+      "y": 1820,
+      "wires": []
+    },
+    {
+      "id": "chassisshield_twenty_check_note_target",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Check Note Target Link",
+      "func": "if (msg.noteResult && !msg.noteResult.success) {\n    node.warn(\"ChassisShield: Note creation/link failed - \" + JSON.stringify(msg.noteResult.error || msg.noteResult.details));\n}\nreturn null;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 3150,
+      "y": 300,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "chassisshield_twenty_prepare_task",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Follow-up Task",
+      "func": "const data = msg.originalPayload;\n\nmsg.taskTitle = `Follow up: ${data.name || 'Waitlist Lead'} (Chassis Shield enrichment)`;\nmsg.taskMarkdown = `**Vehicle:** ${data.carType || 'Not specified'}\\n**Location:** ${data.location || 'Not specified'}\\n\\nReview enrichment details and reach out within 24 hours.`;\nmsg.twentyToken = env.get(\"CHASSISSHIELD_TWENTY_TOKEN\");\nmsg.twentyHost = \"chassisshield.localhost:3000\";\n\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 2610,
+      "y": 380,
+      "wires": [
+        [
+          "chassisshield_task_link"
+        ]
+      ]
+    },
+    {
+      "id": "chassisshield_twenty_check_task_target",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Check Task Target Link",
+      "func": "if (msg.taskResult && !msg.taskResult.success) {\n    node.warn(\"ChassisShield: Task creation/link failed - \" + JSON.stringify(msg.taskResult.error || msg.taskResult.details));\n}\nreturn null;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 3170,
+      "y": 440,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "curbclass_twenty_check_note_target",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Check Note Target Link",
+      "func": "if (msg.noteResult && !msg.noteResult.success) {\n    node.warn(\"CurbClass: Note creation/link failed - \" + JSON.stringify(msg.noteResult.error || msg.noteResult.details));\n}\nreturn null;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 2050,
+      "y": 640,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "curbclass_twenty_prepare_task",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Follow-up Task",
+      "func": "const opp = msg.payload && msg.payload.data && msg.payload.data.createOpportunity;\nconst oppId = opp ? opp.id : '';\nmsg.opportunityId = oppId;\n\nif (!oppId) {\n    // Already warned by the Note-preparation branch\n    return null;\n}\n\nconst data = msg.originalPayload;\nconst hasPhotos = data.imageUrls && data.imageUrls.length > 0;\n\nmsg.taskTitle = `Follow up: ${data.name || 'New Lead'} - ${data.product || 'General inquiry'}`;\nmsg.taskMarkdown = `**Phone:** ${data.phone || 'Not specified'}\\n**Product:** ${data.product || 'General inquiry'}\\n**Photos attached:** ${hasPhotos ? 'Yes (' + data.imageUrls.length + ')' : 'No'}\\n\\n${data.message ? '**Message:**\\n' + data.message + '\\n\\n' : ''}Prepare quote and respond within 24 hours.`;\nmsg.twentyToken = env.get(\"CURBCLASS_TWENTY_TOKEN\");\nmsg.twentyHost = \"curbclass.localhost:3000\";\n\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1470,
+      "y": 760,
+      "wires": [
+        [
+          "curbclass_task_link"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_http_in",
+      "type": "http in",
+      "z": "website_leads_tab",
+      "name": "Invoice Ninja Webhook",
+      "url": "/api/curbclass/invoiceninja",
+      "method": "post",
+      "upload": false,
+      "swaggerDoc": "",
+      "x": 160,
+      "y": 1100,
+      "wires": [
+        [
+          "curbclass_invoiceninja_process"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_process",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Process Ninja Webhook",
+      "func": "const event = msg.payload.event;\nconst data = msg.payload.data;\nconst token = env.get(\"CURBCLASS_TWENTY_TOKEN\");\n\nif (!event || !data) {\n    msg.payload = { success: false, error: \"Invalid payload\" };\n    msg.statusCode = 400;\n    return [msg, null];\n}\n\n// Respond 200 immediately to Invoice Ninja to acknowledge receipt\nconst responseMsg = {\n    payload: { success: true },\n    statusCode: 200,\n    headers: { \"Content-Type\": \"application/json\" },\n    req: msg.req,\n    res: msg.res\n};\n\n// For invoice/quote events, require client_id and status_id to proceed\nif (/^(create|update)_(invoice|quote)$/i.test(event)) {\n    if (data.client_id === undefined || data.status_id === undefined) {\n        node.warn(`CurbClass: Ignoring ${event} webhook missing client_id/status_id`);\n        return [responseMsg, null];\n    }\n}\n\n// Forward to background processing\nconst jobMsg = {\n    token: token,\n    ninjaEvent: event,\n    ninjaData: data\n};\n\nreturn [responseMsg, jobMsg];",
+      "outputs": 2,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 410,
+      "y": 1100,
+      "wires": [
+        [
+          "curbclass_invoiceninja_http_response"
+        ],
+        [
+          "curbclass_invoiceninja_route"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_http_response",
+      "type": "http response",
+      "z": "website_leads_tab",
+      "name": "HTTP Response 200",
+      "statusCode": "",
+      "headers": {},
+      "x": 700,
+      "y": 1040,
+      "wires": []
+    },
+    {
+      "id": "curbclass_invoiceninja_route",
+      "type": "switch",
+      "z": "website_leads_tab",
+      "name": "Route by Event Type",
+      "property": "ninjaEvent",
+      "propertyType": "msg",
+      "rules": [
+        {
+          "t": "regex",
+          "v": "^(create_client|update_client)$",
+          "vt": "str",
+          "case": false
+        },
+        {
+          "t": "regex",
+          "v": "^(create_invoice|update_invoice)$",
+          "vt": "str",
+          "case": false
+        },
+        {
+          "t": "regex",
+          "v": "^(create_quote|update_quote)$",
+          "vt": "str",
+          "case": false
+        }
+      ],
+      "checkall": "true",
+      "repair": false,
+      "outputs": 3,
+      "x": 700,
+      "y": 1180,
+      "wires": [
+        [
+          "curbclass_invoiceninja_sync_client"
+        ],
+        [
+          "curbclass_invoiceninja_sync_invoice"
+        ],
+        [
+          "curbclass_invoiceninja_sync_quote"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_sync_client",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Search Person",
+      "func": "const client = msg.ninjaData;\nconst clientId = client.hashed_id || client.id;\nconst primaryContact = client.contacts && client.contacts[0];\nconst email = primaryContact ? (primaryContact.email || \"\").trim().toLowerCase() : \"\";\nconst name = client.name || (primaryContact ? `${primaryContact.first_name} ${primaryContact.last_name}` : \"\");\n\nif (!email) {\n    return null; // Can not map without email\n}\n\nconst nameParts = name.trim().split(\" \");\nconst firstName = nameParts[0] || \"\";\nconst lastName = nameParts.slice(1).join(\" \") || \"Client\";\n\nmsg.clientInfo = {\n    id: clientId,\n    firstName: firstName,\n    lastName: lastName,\n    email: email\n};\n\nmsg.method = \"GET\";\nmsg.url = `http://bodhi.lab:3100/rest/people?filter=emails.primaryEmail[eq]:${encodeURIComponent(email)}`;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.token,\n    \"Host\": \"curbclass.localhost:3000\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1010,
+      "y": 1140,
+      "wires": [
+        [
+          "curbclass_invoiceninja_search_client_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_search_client_http",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "name": "Search Person",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1300,
+      "y": 1140,
+      "wires": [
+        [
+          "curbclass_invoiceninja_process_client_search"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_process_client_search",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Process Client Search",
+      "func": "const searchData = msg.payload;\nconst existingPerson = searchData.data && searchData.data.people && searchData.data.people[0];\nlet url, method, body;\n\nif (existingPerson) {\n    url = `http://bodhi.lab:3100/rest/people/${existingPerson.id}`;\n    method = \"PATCH\";\n    body = {\n        invoiceNinjaClientId: msg.clientInfo.id\n    };\n} else {\n    url = \"http://bodhi.lab:3100/rest/people\";\n    method = \"POST\";\n    body = {\n        name: {\n            firstName: msg.clientInfo.firstName,\n            lastName: msg.clientInfo.lastName\n        },\n        emails: {\n            primaryEmail: msg.clientInfo.email\n        },\n        jobTitle: \"Curb Class Client\",\n        invoiceNinjaClientId: msg.clientInfo.id\n    };\n}\n\nmsg.method = method;\nmsg.url = url;\nmsg.payload = body;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.token,\n    \"Host\": \"curbclass.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1640,
+      "y": 1140,
+      "wires": [
+        [
+          "curbclass_invoiceninja_upsert_person_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_upsert_person_http",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "name": "Create or Update Person",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1930,
+      "y": 1140,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_sync_invoice",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Search Client for Invoice",
+      "func": "const invoice = msg.ninjaData;\nconst clientHashedId = invoice.client_id;\nconst invoiceStatusId = invoice.status_id;\nconst invoiceAmount = invoice.amount;\n\n// We need to find the person in Twenty who matches clientHashedId\nmsg.invoiceInfo = {\n    statusId: invoiceStatusId,\n    amount: invoiceAmount,\n    balance: invoice.balance,\n    number: invoice.number,\n    invoiceId: invoice.id || invoice.hashed_id,\n    clientHashedId: clientHashedId\n};\n\nmsg.method = \"GET\";\nmsg.url = `http://bodhi.lab:3100/rest/people?filter=invoiceNinjaClientId[eq]:${encodeURIComponent(clientHashedId)}`;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.token,\n    \"Host\": \"curbclass.localhost:3000\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1040,
+      "y": 1220,
+      "wires": [
+        [
+          "curbclass_invoiceninja_search_invoice_client_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_search_invoice_client_http",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "name": "Search Person by Ninja ID",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1350,
+      "y": 1220,
+      "wires": [
+        [
+          "curbclass_invoiceninja_process_invoice_client_search"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_process_invoice_client_search",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Process Invoice Mapping",
+      "func": "const searchData = msg.payload;\nconst person = searchData.data && searchData.data.people && searchData.data.people[0];\nif (!person) {\n    node.warn(\"CurbClass: Could not find Person in Twenty with Client ID: \" + msg.invoiceInfo.clientHashedId);\n    return null;\n}\n\nmsg.personId = person.id;\n\n// Next, find the latest Opportunity for this Person to update its stage\nmsg.method = \"GET\";\nmsg.url = `http://bodhi.lab:3100/rest/opportunities?filter=pointOfContactId[eq]:${encodeURIComponent(person.id)}`;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.token,\n    \"Host\": \"curbclass.localhost:3000\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1650,
+      "y": 1220,
+      "wires": [
+        [
+          "curbclass_invoiceninja_search_opp_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_search_opp_http",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "name": "Search Opportunities",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1900,
+      "y": 1220,
+      "wires": [
+        [
+          "curbclass_invoiceninja_process_opp_search"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_process_opp_search",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Update Opportunity Stage",
+      "func": "const searchData = msg.payload;\nconst opportunities = searchData.data && searchData.data.opportunities;\nif (!opportunities || opportunities.length === 0) {\n    node.warn(\"CurbClass: No Opportunity found for Person ID: \" + msg.personId);\n    return null;\n}\n\n// Prefer open opportunities (not yet at CUSTOMER stage) over ones already\n// marked as in-progress/closed customers, since a new invoice/quote is more\n// likely to relate to an active deal than a previously-completed one.\nconst openOpps = opportunities.filter(o => o.stage !== \"CUSTOMER\");\nconst candidates = openOpps.length > 0 ? openOpps : opportunities;\n\n// Sort by updatedAt or createdAt desc to find the latest one\ncandidates.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));\nconst opp = candidates[0];\nmsg.opportunityId = opp.id;\n\nif (openOpps.length > 1) {\n    node.warn(`CurbClass: Person ${msg.personId} has ${openOpps.length} open opportunities; picked most recently updated (${opp.id}) for this update.`);\n}\n\n// Status IDs in Invoice Ninja:\n// 1 = Draft, 2 = Sent, 3 = Viewed, 4 = Paid, etc.\nconst ninjaStatus = msg.invoiceInfo.statusId;\nlet stage = opp.stage; // Default keep current\n\nif (ninjaStatus === \"4\" || ninjaStatus === 4) {\n    stage = \"CUSTOMER\"; // Paid\n} else if (ninjaStatus === \"2\" || ninjaStatus === 2 || ninjaStatus === \"3\" || ninjaStatus === 3) {\n    stage = \"PROPOSAL\"; // Sent / Viewed (corresponds to active quote stage in Twenty)\n}\n\nmsg.method = \"PATCH\";\nmsg.url = `http://bodhi.lab:3100/rest/opportunities/${opp.id}`;\nmsg.payload = {\n    stage: stage\n};\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.token,\n    \"Host\": \"curbclass.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 2150,
+      "y": 1220,
+      "wires": [
+        [
+          "curbclass_invoiceninja_update_opp_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_update_opp_http",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "name": "Update Opportunity",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 2390,
+      "y": 1220,
+      "wires": [
+        [
+          "curbclass_invoiceninja_prepare_note"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_prepare_ninja_client",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Invoice Ninja Client",
+      "func": "const person = msg.payload && msg.payload.data && (msg.payload.data.createPerson || msg.payload.data.updatePerson);\nif (!person) {\n    return null;\n}\n\nconst email = person.emails ? (person.emails.primaryEmail || '') : '';\nconst firstName = person.name ? (person.name.firstName || '') : '';\nconst lastName = person.name ? (person.name.lastName || '') : '';\nconst name = `${firstName} ${lastName}`.trim();\n\nif (person.invoiceNinjaClientId || !email) {\n    return null; // Already has ID or no email to map\n}\n\nmsg.personId = person.id;\nmsg.method = \"POST\";\nmsg.url = \"https://invoice.cosmoslab.dev/api/v1/clients\";\nmsg.payload = {\n    name: name,\n    contacts: [\n        {\n            first_name: firstName,\n            last_name: lastName,\n            email: email,\n            send_email: true\n        }\n    ]\n};\nmsg.headers = {\n    \"X-Api-Token\": env.get(\"CURBCLASS_INVOICENINJA_TOKEN\"),\n    \"Content-Type\": \"application/json\",\n    \"Accept\": \"application/json\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 980,
+      "y": 880,
+      "wires": [
+        [
+          "curbclass_twenty_create_ninja_client_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_create_ninja_client_http",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "name": "Create Ninja Client",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1270,
+      "y": 880,
+      "wires": [
+        [
+          "curbclass_twenty_update_person_ninja_id"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_update_person_ninja_id",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Twenty Person Update",
+      "func": "const client = msg.payload && msg.payload.data;\nconst clientId = client ? (client.hashed_id || client.id) : '';\n\nif (!clientId) {\n    node.warn(\"CurbClass: Failed to create client in Invoice Ninja\");\n    return null;\n}\n\nmsg.method = \"PATCH\";\nmsg.url = `http://bodhi.lab:3100/rest/people/${msg.personId}`;\nmsg.payload = {\n    invoiceNinjaClientId: clientId\n};\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + env.get(\"CURBCLASS_TWENTY_TOKEN\"),\n    \"Host\": \"curbclass.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1570,
+      "y": 880,
+      "wires": [
+        [
+          "curbclass_twenty_update_person_ninja_id_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_update_person_ninja_id_http",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "name": "Update Person Client ID",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1930,
+      "y": 880,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "nl_link_in",
+      "type": "link in",
+      "z": "website_leads_tab",
+      "name": "Create Note + Link",
+      "links": [],
+      "x": 380,
+      "y": 1440,
+      "wires": [
+        [
+          "nl_create_note"
+        ]
+      ]
+    },
+    {
+      "id": "nl_create_note",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Build Create Note Request",
+      "func": "msg.method = \"POST\";\nmsg.url = \"http://bodhi.lab:3100/rest/notes\";\nmsg.payload = {\n    title: msg.noteTitle,\n    bodyV2: { markdown: msg.noteMarkdown || \"\" }\n};\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.twentyToken,\n    \"Host\": msg.twentyHost,\n    \"Content-Type\": \"application/json\"\n};\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 620,
+      "y": 1440,
+      "wires": [
+        [
+          "nl_http_create_note"
+        ]
+      ]
+    },
+    {
+      "id": "nl_http_create_note",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "name": "Create Note",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 860,
+      "y": 1440,
+      "wires": [
+        [
+          "nl_prepare_targets"
+        ]
+      ]
+    },
+    {
+      "id": "nl_prepare_targets",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Note Targets",
+      "func": "const note = msg.payload && msg.payload.data && msg.payload.data.createNote;\nconst noteId = note ? note.id : '';\n\nif (!noteId) {\n    msg.noteResult = {\n        success: false,\n        error: 'Note creation failed',\n        details: msg.payload && msg.payload.errors\n    };\n    return [null, msg];\n}\n\nconst targets = [];\nif (msg.personId) {\n    targets.push({ noteId: noteId, targetPersonId: msg.personId });\n}\nif (msg.opportunityId) {\n    targets.push({ noteId: noteId, targetOpportunityId: msg.opportunityId });\n}\n\nif (targets.length === 0) {\n    msg.noteResult = { success: true, noteId: noteId, linked: 0 };\n    return [null, msg];\n}\n\nmsg.noteId = noteId;\nconst token = msg.twentyToken;\nconst host = msg.twentyHost;\n\nconst msgs = targets.map(payload => {\n    const m = Object.assign({}, msg);\n    m.method = \"POST\";\n    m.url = \"http://bodhi.lab:3100/rest/noteTargets\";\n    m.headers = {\n        \"Authorization\": \"Bearer \" + token,\n        \"Host\": host,\n        \"Content-Type\": \"application/json\"\n    };\n    m.payload = payload;\n    return m;\n});\n\nreturn [msgs, null];",
+      "outputs": 2,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1100,
+      "y": 1440,
+      "wires": [
+        [
+          "nl_http_link"
+        ],
+        [
+          "nl_link_out"
+        ]
+      ]
+    },
+    {
+      "id": "nl_http_link",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "name": "Link Note",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1340,
+      "y": 1400,
+      "wires": [
+        [
+          "nl_format_result"
+        ]
+      ]
+    },
+    {
+      "id": "nl_format_result",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Format Result",
+      "func": "const target = msg.payload && msg.payload.data && msg.payload.data.createNoteTarget;\nmsg.noteResult = {\n    success: !!target,\n    noteId: msg.noteId,\n    error: target ? undefined : (msg.payload && msg.payload.errors)\n};\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1580,
+      "y": 1400,
+      "wires": [
+        [
+          "nl_link_out"
+        ]
+      ]
+    },
+    {
+      "id": "nl_link_out",
+      "type": "link out",
+      "z": "website_leads_tab",
+      "name": "Create Note + Link (return)",
+      "mode": "return",
+      "links": [],
+      "x": 1820,
+      "y": 1440
+    },
+    {
+      "id": "curbclass_note_link",
+      "type": "link call",
+      "z": "website_leads_tab",
+      "name": "Create Note + Link",
+      "links": [
+        "nl_link_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 1770,
+      "y": 640,
+      "wires": [
+        [
+          "curbclass_twenty_check_note_target"
+        ]
+      ]
+    },
+    {
+      "id": "chassisshield_note_link",
+      "type": "link call",
+      "z": "website_leads_tab",
+      "name": "Create Note + Link",
+      "links": [
+        "nl_link_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 2850,
+      "y": 300,
+      "wires": [
+        [
+          "chassisshield_twenty_check_note_target"
+        ]
+      ]
+    },
+    {
+      "id": "ps_link_in",
+      "type": "link in",
+      "z": "website_leads_tab",
+      "name": "Search & Upsert Person",
+      "links": [],
+      "x": 380,
+      "y": 1540,
+      "wires": [
+        [
+          "ps_search_request"
+        ]
+      ]
+    },
+    {
+      "id": "ps_search_request",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Build Search Person Request",
+      "func": "msg.method = \"GET\";\nmsg.url = `http://bodhi.lab:3100/rest/people?filter=emails.primaryEmail[eq]:${encodeURIComponent(msg.lead.email)}`;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.twentyToken,\n    \"Host\": msg.twentyHost\n};\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 640,
+      "y": 1540,
+      "wires": [
+        [
+          "ps_http_search"
+        ]
+      ]
+    },
+    {
+      "id": "ps_http_search",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "name": "Search Person",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 880,
+      "y": 1540,
+      "wires": [
+        [
+          "ps_upsert_request"
+        ]
+      ]
+    },
+    {
+      "id": "ps_upsert_request",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Build Upsert Person Request",
+      "func": "const searchData = msg.payload;\nconst existingPerson = searchData.data && searchData.data.people && searchData.data.people[0];\nlet url, method, body;\n\nif (existingPerson) {\n    url = `http://bodhi.lab:3100/rest/people/${existingPerson.id}`;\n    method = 'PATCH';\n    body = {\n        name: { firstName: msg.lead.firstName, lastName: msg.lead.lastName },\n        jobTitle: msg.jobTitle\n    };\n    if (msg.lead.phone) {\n        body.phones = { primaryPhoneNumber: msg.lead.phone };\n    }\n} else {\n    url = 'http://bodhi.lab:3100/rest/people';\n    method = 'POST';\n    body = {\n        name: { firstName: msg.lead.firstName, lastName: msg.lead.lastName },\n        emails: { primaryEmail: msg.lead.email },\n        jobTitle: msg.jobTitle\n    };\n    if (msg.lead.phone) {\n        body.phones = { primaryPhoneNumber: msg.lead.phone };\n    }\n}\n\nmsg.method = method;\nmsg.url = url;\nmsg.payload = body;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.twentyToken,\n    \"Host\": msg.twentyHost,\n    \"Content-Type\": \"application/json\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1140,
+      "y": 1540,
+      "wires": [
+        [
+          "ps_http_action"
+        ]
+      ]
+    },
+    {
+      "id": "ps_http_action",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "name": "Create or Update Person",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1420,
+      "y": 1540,
+      "wires": [
+        [
+          "ps_link_out"
+        ]
+      ]
+    },
+    {
+      "id": "ps_link_out",
+      "type": "link out",
+      "z": "website_leads_tab",
+      "name": "Search & Upsert Person (return)",
+      "mode": "return",
+      "links": [],
+      "x": 1700,
+      "y": 1540
+    },
+    {
+      "id": "curbclass_person_upsert",
+      "type": "link call",
+      "z": "website_leads_tab",
+      "name": "Search & Upsert Person",
+      "links": [
+        "ps_link_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 670,
+      "y": 700,
+      "wires": [
+        [
+          "curbclass_twenty_format_response",
+          "curbclass_twenty_prepare_opportunity",
+          "curbclass_twenty_prepare_ninja_client"
+        ]
+      ]
+    },
+    {
+      "id": "chassisshield_person_upsert",
+      "type": "link call",
+      "z": "website_leads_tab",
+      "name": "Search & Upsert Person",
+      "links": [
+        "ps_link_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 730,
+      "y": 300,
+      "wires": [
+        [
+          "chassisshield_twenty_format_response",
+          "chassisshield_twenty_route_followup"
+        ]
+      ]
+    },
+    {
+      "id": "tl_link_in",
+      "type": "link in",
+      "z": "website_leads_tab",
+      "name": "Create Task + Link",
+      "links": [],
+      "x": 380,
+      "y": 1640,
+      "wires": [
+        [
+          "tl_create_task"
+        ]
+      ]
+    },
+    {
+      "id": "tl_create_task",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Build Create Task Request",
+      "func": "msg.method = \"POST\";\nmsg.url = \"http://bodhi.lab:3100/rest/tasks\";\nmsg.payload = {\n    title: msg.taskTitle,\n    bodyV2: { markdown: msg.taskMarkdown || \"\" },\n    status: \"TODO\",\n    dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()\n};\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.twentyToken,\n    \"Host\": msg.twentyHost,\n    \"Content-Type\": \"application/json\"\n};\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 620,
+      "y": 1640,
+      "wires": [
+        [
+          "tl_http_create_task"
+        ]
+      ]
+    },
+    {
+      "id": "tl_http_create_task",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "name": "Create Task",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 860,
+      "y": 1640,
+      "wires": [
+        [
+          "tl_prepare_targets"
+        ]
+      ]
+    },
+    {
+      "id": "tl_prepare_targets",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Task Targets",
+      "func": "const task = msg.payload && msg.payload.data && msg.payload.data.createTask;\nconst taskId = task ? task.id : '';\n\nif (!taskId) {\n    msg.taskResult = {\n        success: false,\n        error: 'Task creation failed',\n        details: msg.payload && msg.payload.errors\n    };\n    return [null, msg];\n}\n\nconst targets = [];\nif (msg.personId) {\n    targets.push({ taskId: taskId, targetPersonId: msg.personId });\n}\nif (msg.opportunityId) {\n    targets.push({ taskId: taskId, targetOpportunityId: msg.opportunityId });\n}\n\nif (targets.length === 0) {\n    msg.taskResult = { success: true, taskId: taskId, linked: 0 };\n    return [null, msg];\n}\n\nmsg.taskId = taskId;\nconst token = msg.twentyToken;\nconst host = msg.twentyHost;\n\nconst msgs = targets.map(payload => {\n    const m = Object.assign({}, msg);\n    m.method = \"POST\";\n    m.url = \"http://bodhi.lab:3100/rest/taskTargets\";\n    m.headers = {\n        \"Authorization\": \"Bearer \" + token,\n        \"Host\": host,\n        \"Content-Type\": \"application/json\"\n    };\n    m.payload = payload;\n    return m;\n});\n\nreturn [msgs, null];",
+      "outputs": 2,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1100,
+      "y": 1640,
+      "wires": [
+        [
+          "tl_http_link"
+        ],
+        [
+          "tl_link_out"
+        ]
+      ]
+    },
+    {
+      "id": "tl_http_link",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "name": "Link Task",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1340,
+      "y": 1600,
+      "wires": [
+        [
+          "tl_format_result"
+        ]
+      ]
+    },
+    {
+      "id": "tl_format_result",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Format Result",
+      "func": "const target = msg.payload && msg.payload.data && msg.payload.data.createTaskTarget;\nmsg.taskResult = {\n    success: !!target,\n    taskId: msg.taskId,\n    error: target ? undefined : (msg.payload && msg.payload.errors)\n};\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1580,
+      "y": 1600,
+      "wires": [
+        [
+          "tl_link_out"
+        ]
+      ]
+    },
+    {
+      "id": "tl_link_out",
+      "type": "link out",
+      "z": "website_leads_tab",
+      "name": "Create Task + Link (return)",
+      "mode": "return",
+      "links": [],
+      "x": 1820,
+      "y": 1640
+    },
+    {
+      "id": "curbclass_task_link",
+      "type": "link call",
+      "z": "website_leads_tab",
+      "name": "Create Task + Link",
+      "links": [
+        "tl_link_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 1770,
+      "y": 760,
+      "wires": [
+        [
+          "curbclass_twenty_check_task_target"
+        ]
+      ]
+    },
+    {
+      "id": "chassisshield_task_link",
+      "type": "link call",
+      "z": "website_leads_tab",
+      "name": "Create Task + Link",
+      "links": [
+        "tl_link_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 2910,
+      "y": 440,
+      "wires": [
+        [
+          "chassisshield_twenty_check_task_target"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_check_task_target",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Check Task Target Link",
+      "func": "if (msg.taskResult && !msg.taskResult.success) {\n    node.warn(\"CurbClass: Task creation/link failed - \" + JSON.stringify(msg.taskResult.error || msg.taskResult.details));\n}\nreturn null;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 2050,
+      "y": 760,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "chassisshield_twenty_http_search_opportunity",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "name": "Search Opportunity by Person",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1350,
+      "y": 340,
+      "wires": [
+        [
+          "chassisshield_twenty_prepare_opportunity"
+        ]
+      ]
+    },
+    {
+      "id": "chassisshield_twenty_route_post_opportunity",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Route: Post-Opportunity",
+      "func": "const result = msg.payload && msg.payload.data && (msg.payload.data.createOpportunity || msg.payload.data.updateOpportunity);\nconst opportunityId = result ? result.id : '';\nmsg.opportunityId = opportunityId;\n\nif (!opportunityId) {\n    node.warn(\"ChassisShield: Opportunity create/update failed - \" + JSON.stringify(msg.payload && msg.payload.errors));\n    return [null, null];\n}\n\nif (msg.opportunityCase === 'enriched') {\n    return [msg, null];\n}\n\nif (msg.opportunityCase === 'skipped') {\n    return [null, msg];\n}\n\n// 'incomplete' - Opportunity created, nothing further to do\nreturn [null, null];",
+      "outputs": 2,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 2270,
+      "y": 340,
+      "wires": [
+        [
+          "chassisshield_twenty_prepare_enrichment_note",
+          "chassisshield_twenty_prepare_task"
+        ],
+        [
+          "chassisshield_twenty_prepare_skip_task"
+        ]
+      ]
+    },
+    {
+      "id": "chassisshield_twenty_prepare_skip_task",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Skipped-Profile Task",
+      "func": "const data = msg.originalPayload;\n\nmsg.taskTitle = `Follow up: ${data.email} (Chassis Shield - no profile details provided)`;\nmsg.taskMarkdown = \"Reach out manually; user skipped the profile enrichment step.\";\nmsg.twentyToken = env.get(\"CHASSISSHIELD_TWENTY_TOKEN\");\nmsg.twentyHost = \"chassisshield.localhost:3000\";\n\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 2600,
+      "y": 460,
+      "wires": [
+        [
+          "chassisshield_task_link"
+        ]
+      ]
+    },
+    {
+      "id": "ttc_token_export_inject",
+      "type": "inject",
+      "z": "website_leads_tab",
+      "name": "On Deploy",
+      "props": [
+        {
+          "p": "payload"
+        }
+      ],
+      "repeat": "",
+      "crontab": "",
+      "once": true,
+      "onceDelay": 0.1,
+      "topic": "",
+      "payload": "",
+      "payloadType": "date",
+      "x": 450,
+      "y": 1740,
+      "wires": [
+        [
+          "ttc_token_export_fn"
+        ]
+      ]
+    },
+    {
+      "id": "ttc_token_export_fn",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Export Tokens to Global (for Trash Cleanup tool)",
+      "func": "global.set(\"CURBCLASS_TWENTY_TOKEN\", env.get(\"CURBCLASS_TWENTY_TOKEN\"));\nglobal.set(\"CHASSISSHIELD_TWENTY_TOKEN\", env.get(\"CHASSISSHIELD_TWENTY_TOKEN\"));\nreturn null;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1080,
+      "y": 1740,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_prepare_note",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Invoice Note",
+      "func": "const info = msg.invoiceInfo;\nconst statusLabels = { \"1\": \"Draft\", \"2\": \"Sent\", \"3\": \"Viewed\", \"4\": \"Paid\", \"5\": \"Partial\", \"6\": \"Cancelled\" };\nconst statusLabel = statusLabels[String(info.statusId)] || `Status ${info.statusId}`;\nconst invoiceUrl = `https://invoice.cosmoslab.dev/invoices/${info.invoiceId}/edit`;\nconst displayNumber = info.number || info.invoiceId;\n\nmsg.noteTitle = `Invoice #${displayNumber} - ${statusLabel}`;\nmsg.noteMarkdown = `[View Invoice #${displayNumber} in Invoice Ninja](${invoiceUrl})`;\n\nmsg.twentyToken = msg.token;\nmsg.twentyHost = \"curbclass.localhost:3000\";\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 2660,
+      "y": 1220,
+      "wires": [
+        [
+          "curbclass_invoiceninja_check_note_dup_prep"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_sync_quote",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Search Client for Quote",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1040,
+      "y": 1380,
+      "wires": [
+        [
+          "curbclass_invoiceninja_search_quote_client_http"
+        ]
+      ],
+      "func": "const quote = msg.ninjaData;\nconst clientHashedId = quote.client_id;\nconst quoteStatusId = quote.status_id;\nconst quoteAmount = quote.amount;\n\nmsg.quoteInfo = {\n    statusId: quoteStatusId,\n    amount: quoteAmount,\n    balance: quote.balance,\n    number: quote.number,\n    quoteId: quote.id || quote.hashed_id,\n    clientHashedId: clientHashedId\n};\n\nmsg.method = \"GET\";\nmsg.url = `http://bodhi.lab:3100/rest/people?filter=invoiceNinjaClientId[eq]:${encodeURIComponent(clientHashedId)}`;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.token,\n    \"Host\": \"curbclass.localhost:3000\"\n};\n\nreturn msg;"
+    },
+    {
+      "type": "http request",
+      "z": "website_leads_tab",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "id": "curbclass_invoiceninja_search_quote_client_http",
+      "name": "Search Person by Ninja ID (Quote)",
+      "x": 1350,
+      "y": 1380,
+      "wires": [
+        [
+          "curbclass_invoiceninja_process_quote_client_search"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_process_quote_client_search",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Process Quote Mapping",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1650,
+      "y": 1380,
+      "wires": [
+        [
+          "curbclass_invoiceninja_search_quote_opp_http"
+        ]
+      ],
+      "func": "const searchData = msg.payload;\nconst person = searchData.data && searchData.data.people && searchData.data.people[0];\nif (!person) {\n    node.warn(\"CurbClass: Could not find Person in Twenty with Client ID: \" + msg.quoteInfo.clientHashedId);\n    return null;\n}\n\nmsg.personId = person.id;\n\n// Next, find the latest Opportunity for this Person to update its stage\nmsg.method = \"GET\";\nmsg.url = `http://bodhi.lab:3100/rest/opportunities?filter=pointOfContactId[eq]:${encodeURIComponent(person.id)}`;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.token,\n    \"Host\": \"curbclass.localhost:3000\"\n};\n\nreturn msg;"
+    },
+    {
+      "type": "http request",
+      "z": "website_leads_tab",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "id": "curbclass_invoiceninja_search_quote_opp_http",
+      "name": "Search Opportunities (Quote)",
+      "x": 1900,
+      "y": 1380,
+      "wires": [
+        [
+          "curbclass_invoiceninja_process_quote_opp_search"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_process_quote_opp_search",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Update Opportunity Stage (Quote)",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 2150,
+      "y": 1380,
+      "wires": [
+        [
+          "curbclass_invoiceninja_update_quote_opp_http"
+        ]
+      ],
+      "func": "const searchData = msg.payload;\nconst opportunities = searchData.data && searchData.data.opportunities;\nif (!opportunities || opportunities.length === 0) {\n    node.warn(\"CurbClass: No Opportunity found for Person ID: \" + msg.personId);\n    return null;\n}\n\n// Prefer open opportunities (not yet at CUSTOMER stage) over ones already\n// marked as in-progress/closed customers, since a new invoice/quote is more\n// likely to relate to an active deal than a previously-completed one.\nconst openOpps = opportunities.filter(o => o.stage !== \"CUSTOMER\");\nconst candidates = openOpps.length > 0 ? openOpps : opportunities;\n\n// Sort by updatedAt or createdAt desc to find the latest one\ncandidates.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));\nconst opp = candidates[0];\nmsg.opportunityId = opp.id;\n\nif (openOpps.length > 1) {\n    node.warn(`CurbClass: Person ${msg.personId} has ${openOpps.length} open opportunities; picked most recently updated (${opp.id}) for this update.`);\n}\n\n// Quote status IDs in Invoice Ninja:\n// 1 = Draft, 2 = Sent, 3 = Approved, 4 = Converted, 5 = Expired\nconst ninjaStatus = msg.quoteInfo.statusId;\nlet stage = opp.stage; // Default keep current\n\nif (ninjaStatus === \"1\" || ninjaStatus === 1) {\n    stage = \"MEETING\"; // Draft -> Quote Drafted\n} else if (ninjaStatus === \"2\" || ninjaStatus === 2 || ninjaStatus === \"3\" || ninjaStatus === 3) {\n    stage = \"PROPOSAL\"; // Sent / Approved -> Quote Sent\n}\n// Converted / Expired: leave stage unchanged\n\nmsg.method = \"PATCH\";\nmsg.url = `http://bodhi.lab:3100/rest/opportunities/${opp.id}`;\nmsg.payload = {\n    stage: stage\n};\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.token,\n    \"Host\": \"curbclass.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\n\nreturn msg;"
+    },
+    {
+      "type": "http request",
+      "z": "website_leads_tab",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "id": "curbclass_invoiceninja_update_quote_opp_http",
+      "name": "Update Opportunity (Quote)",
+      "x": 2390,
+      "y": 1380,
+      "wires": [
+        [
+          "curbclass_invoiceninja_prepare_quote_note"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_prepare_quote_note",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Quote Note",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 2660,
+      "y": 1380,
+      "wires": [
+        [
+          "curbclass_invoiceninja_check_note_dup_prep"
+        ]
+      ],
+      "func": "const info = msg.quoteInfo;\nconst statusLabels = { \"1\": \"Draft\", \"2\": \"Sent\", \"3\": \"Approved\", \"4\": \"Converted\", \"5\": \"Expired\" };\nconst statusLabel = statusLabels[String(info.statusId)] || `Status ${info.statusId}`;\nconst quoteUrl = `https://invoice.cosmoslab.dev/quotes/${info.quoteId}/edit`;\nconst displayNumber = info.number || info.quoteId;\n\nmsg.noteTitle = `Quote #${displayNumber} - ${statusLabel}`;\nmsg.noteMarkdown = `[View Quote #${displayNumber} in Invoice Ninja](${quoteUrl})`;\n\nmsg.twentyToken = msg.token;\nmsg.twentyHost = \"curbclass.localhost:3000\";\n\nreturn msg;"
+    },
+    {
+      "id": "curbclass_invoiceninja_check_note_dup_prep",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Note Duplicate Check",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 2900,
+      "y": 1300,
+      "wires": [
+        [
+          "curbclass_invoiceninja_check_note_dup_http"
+        ]
+      ],
+      "func": "msg.method = \"GET\";\nmsg.url = `http://bodhi.lab:3100/rest/notes?filter=title[eq]:${encodeURIComponent(msg.noteTitle)}`;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.twentyToken,\n    \"Host\": msg.twentyHost\n};\nreturn msg;"
+    },
+    {
+      "type": "http request",
+      "z": "website_leads_tab",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "id": "curbclass_invoiceninja_check_note_dup_http",
+      "name": "Search Notes by Title",
+      "x": 3150,
+      "y": 1300,
+      "wires": [
+        [
+          "curbclass_invoiceninja_check_note_dup_process"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_check_note_dup_process",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Skip if Note Exists",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 3400,
+      "y": 1300,
+      "wires": [
+        [
+          "curbclass_note_link"
+        ]
+      ],
+      "func": "const notes = msg.payload && msg.payload.data && msg.payload.data.notes;\nif (notes && notes.length > 0) {\n    node.warn(\"CurbClass: Skipping duplicate note - already exists: \" + msg.noteTitle);\n    return null;\n}\nreturn msg;"
+    },
+    {
+      "id": "curbclass_reconcile_inject",
+      "type": "inject",
+      "z": "website_leads_tab",
+      "name": "Reconcile Invoice Ninja Client IDs (30 min)",
+      "props": [
+        {
+          "p": "payload"
+        }
+      ],
+      "repeat": "1800",
+      "crontab": "",
+      "once": false,
+      "onceDelay": 0.1,
+      "topic": "",
+      "payload": "",
+      "payloadType": "date",
+      "x": 200,
+      "y": 2000,
+      "wires": [
+        [
+          "curbclass_reconcile_fetch_clients_prep"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_reconcile_fetch_clients_prep",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Prepare Fetch Ninja Clients",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 480,
+      "y": 2000,
+      "wires": [
+        [
+          "curbclass_reconcile_fetch_clients_http"
+        ]
+      ],
+      "func": "msg.method = \"GET\";\nmsg.url = \"https://invoice.cosmoslab.dev/api/v1/clients?per_page=100&page=1\";\nmsg.headers = {\n    \"X-Api-Token\": env.get(\"CURBCLASS_INVOICENINJA_TOKEN\"),\n    \"Accept\": \"application/json\"\n};\nreturn msg;"
+    },
+    {
+      "type": "http request",
+      "z": "website_leads_tab",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "id": "curbclass_reconcile_fetch_clients_http",
+      "name": "Get Ninja Clients",
+      "x": 740,
+      "y": 2000,
+      "wires": [
+        [
+          "curbclass_reconcile_process_clients"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_reconcile_process_clients",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Process Ninja Clients Page",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1000,
+      "y": 2000,
+      "wires": [
+        [
+          "curbclass_reconcile_rate_limit"
+        ]
+      ],
+      "func": "const clients = (msg.payload && msg.payload.data) || [];\nconst pagination = msg.payload && msg.payload.meta && msg.payload.meta.pagination;\nif (pagination && pagination.total_pages > 1) {\n    node.warn(`CurbClass Reconciliation: Invoice Ninja has ${pagination.total_pages} pages of clients, only checking page 1 (per_page=100)`);\n}\n\nconst token = env.get(\"CURBCLASS_TWENTY_TOKEN\");\nconst msgs = [];\nfor (const client of clients) {\n    if (client.is_deleted) continue;\n    const contact = client.contacts && client.contacts[0];\n    const email = contact && contact.email;\n    if (!email) continue;\n\n    const m = {};\n    m.ninjaClientId = client.id;\n    m.method = \"GET\";\n    m.url = `http://bodhi.lab:3100/rest/people?filter=emails.primaryEmail[eq]:${encodeURIComponent(email)}`;\n    m.headers = {\n        \"Authorization\": \"Bearer \" + token,\n        \"Host\": \"curbclass.localhost:3000\"\n    };\n    msgs.push(m);\n}\nreturn [msgs];"
+    },
+    {
+      "id": "curbclass_reconcile_rate_limit",
+      "type": "delay",
+      "z": "website_leads_tab",
+      "name": "Rate Limit (1/sec)",
+      "pauseType": "rate",
+      "timeout": "5",
+      "timeoutUnits": "seconds",
+      "rate": "1",
+      "nbRateUnits": "1",
+      "rateUnits": "second",
+      "randomFirst": "1",
+      "randomLast": "5",
+      "randomUnits": "seconds",
+      "drop": false,
+      "allowrate": false,
+      "outputs": 1,
+      "x": 1250,
+      "y": 2000,
+      "wires": [
+        [
+          "curbclass_reconcile_search_person_http"
+        ]
+      ]
+    },
+    {
+      "type": "http request",
+      "z": "website_leads_tab",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "id": "curbclass_reconcile_search_person_http",
+      "name": "Search Person by Email",
+      "x": 1500,
+      "y": 2000,
+      "wires": [
+        [
+          "curbclass_reconcile_backfill_prep"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_reconcile_backfill_prep",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Backfill Ninja Client ID if Missing",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1760,
+      "y": 2000,
+      "wires": [
+        [
+          "curbclass_reconcile_patch_person_http"
+        ]
+      ],
+      "func": "const people = msg.payload && msg.payload.data && msg.payload.data.people;\nconst person = people && people[0];\nif (!person || person.invoiceNinjaClientId) {\n    return null; // no match, or already linked\n}\n\nnode.warn(`CurbClass Reconciliation: Backfilling invoiceNinjaClientId=${msg.ninjaClientId} for person ${person.id}`);\n\nmsg.method = \"PATCH\";\nmsg.url = `http://bodhi.lab:3100/rest/people/${person.id}`;\nmsg.payload = { invoiceNinjaClientId: msg.ninjaClientId };\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + env.get(\"CURBCLASS_TWENTY_TOKEN\"),\n    \"Host\": \"curbclass.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\nreturn msg;"
+    },
+    {
+      "type": "http request",
+      "z": "website_leads_tab",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "id": "curbclass_reconcile_patch_person_http",
+      "name": "Patch Person Ninja Client ID",
+      "x": 2020,
+      "y": 2000,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "curbclass_validate_contact",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Validate Contact Payload",
+      "outputs": 2,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 280,
+      "y": 760,
+      "wires": [
+        [
+          "curbclass_contact_format",
+          "curbclass_twenty_prepare_search"
+        ],
+        [
+          "weblead_http_response_error"
+        ]
+      ],
+      "func": "const p = msg.payload || {};\nconst name = (p.name || '').trim();\nconst email = (p.email || '').trim();\nconst phone = (p.phone || '').trim();\n\nconst missing = [];\nif (!name) missing.push('name');\nif (!email) missing.push('email');\nif (!phone) missing.push('phone');\n\nif (missing.length > 0) {\n    const errMsg = Object.assign({}, msg);\n    errMsg.statusCode = 400;\n    errMsg.payload = {\n        success: false,\n        error: `Missing required field(s): ${missing.join(', ')}`\n    };\n    errMsg.headers = { 'Content-Type': 'application/json' };\n    return [null, errMsg];\n}\n\nreturn [msg, null];"
+    },
+    {
+      "id": "chassisshield_validate_contact",
+      "type": "function",
+      "z": "website_leads_tab",
+      "name": "Validate Contact Payload",
+      "outputs": 2,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 330,
+      "y": 380,
+      "wires": [
+        [
+          "chassisshield_contact_format",
+          "chassisshield_twenty_prepare_search"
+        ],
+        [
+          "weblead_http_response_error"
+        ]
+      ],
+      "func": "const p = msg.payload || {};\nconst email = (p.email || '').trim();\n\nif (!email) {\n    const errMsg = Object.assign({}, msg);\n    errMsg.statusCode = 400;\n    errMsg.payload = {\n        success: false,\n        error: 'Missing required field: email'\n    };\n    errMsg.headers = { 'Content-Type': 'application/json' };\n    return [null, errMsg];\n}\n\nreturn [msg, null];"
+    }
+  ]
+}
