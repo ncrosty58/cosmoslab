@@ -440,7 +440,7 @@
       "type": "function",
       "z": "website_leads_tab",
       "name": "Format Error Response",
-      "func": "const err = msg.error || {};\nnode.error(\"Web lead processing error: \" + (err.message || err), msg);\n\nmsg.statusCode = 500;\nmsg.payload = {\n    success: false,\n    error: 'Failed to process lead.'\n};\nmsg.headers = {\n    'Content-Type': 'application/json'\n};\n\nreturn msg;",
+      "func": "const err = msg.error || {};\nnode.error(\"Web lead processing error: \" + (err.message || err), msg);\n\n// Guard: background CRM errors arrive here after the 200 was already sent.\n// Trying to send a second response causes ERR_HTTP_HEADERS_SENT which loops.\ntry {\n    const res = msg.res && msg.res._res;\n    if (!res || res.headersSent || res.writableEnded || res.finished) {\n        return null; // Response already sent \u2014 log only, do not re-respond\n    }\n} catch (e) {\n    return null;\n}\n\nmsg.statusCode = 500;\nmsg.payload = {\n    success: false,\n    error: 'Failed to process lead.'\n};\nmsg.headers = {\n    'Content-Type': 'application/json'\n};\n\nreturn msg;",
       "outputs": 1,
       "timeout": 0,
       "noerr": 0,
