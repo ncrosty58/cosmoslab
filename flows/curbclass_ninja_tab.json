@@ -1,0 +1,1025 @@
+{
+  "id": "curbclass_ninja_tab",
+  "label": "CurbClass Invoice Ninja Sync",
+  "disabled": false,
+  "info": "Invoice Ninja Webhook -> Twenty CRM sync & client reconciliation",
+  "env": [
+    {
+      "name": "CHASSISSHIELD_TWENTY_TOKEN",
+      "type": "str",
+      "value": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjVmYzVlZTlhLTYxOGQtNDg5My04ZGM3LTQ5YWY3MmNhMmRiYiJ9.eyJzdWIiOiJlNjcxNzhmMi03ZjcyLTRlNGEtOTdlOC0yYjc0MzEzNzg0OGMiLCJ0eXBlIjoiQVBJX0tFWSIsIndvcmtzcGFjZUlkIjoiZTY3MTc4ZjItN2Y3Mi00ZTRhLTk3ZTgtMmI3NDMxMzc4NDhjIiwiaWF0IjoxNzgxNzQwNDk4LCJleHAiOjQ5MzUzNDA0OTcsImp0aSI6IjgyYzg3MDhkLTVjNWMtNDNhNC1hZDNjLTkyZGY0MmYzMWUxMSJ9.2qEzBqDJYLqO-idhoqFLFAOj_BlvMtlv0IurVJS_KX1N0nm5OeiSMY3TtyE1hxD5KGry7I6bj2vh54EJYarpxQ"
+    },
+    {
+      "name": "CURBCLASS_TWENTY_TOKEN",
+      "type": "str",
+      "value": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjVmYzVlZTlhLTYxOGQtNDg5My04ZGM3LTQ5YWY3MmNhMmRiYiJ9.eyJzdWIiOiJlNjcxNzhmMi03ZjcyLTRlNGEtOTdlOC0yYjc0MzEzNzg0OGMiLCJ0eXBlIjoiQVBJX0tFWSIsIndvcmtzcGFjZUlkIjoiZTY3MTc4ZjItN2Y3Mi00ZTRhLTk3ZTgtMmI3NDMxMzc4NDhjIiwiaWF0IjoxNzgxODMyNjA2LCJleHAiOjQ5MzUzNDYyMDUsImp0aSI6ImEwYWY5N2M2LWNkNDctNDJmZS1iYTYzLThmMTQwNzFiMzA5MiJ9.PWZYMtCZrz6FBtWwSekY1vgOfLEpoOHDlqQqRLo0XTAgKNNGJSamNi_fJk4_JfkFHfdEZNXD0_OjLHgVsoU4vA"
+    },
+    {
+      "name": "GEMINI_API_KEY",
+      "type": "cred"
+    },
+    {
+      "name": "CURBCLASS_INVOICENINJA_TOKEN",
+      "type": "str",
+      "value": "96nrvSgddFbUA2JLm38I2FJHirK8XcBpl7e31iMRy25GnxLa5QdUhMCSfpbCSmcX"
+    },
+    {
+      "name": "TWENTY_BASE_URL",
+      "type": "str",
+      "value": "http://bodhi.lab:3100"
+    },
+    {
+      "name": "RESEND_API_KEY",
+      "type": "str",
+      "value": "re_NMu8LEhZ_79htiqBBLKyfDZAcwnBPvGMb"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "type": "group",
+      "z": "curbclass_ninja_tab",
+      "name": "CurbClass \u2014 Invoice Ninja",
+      "style": {
+        "stroke": "#d35400",
+        "stroke-opacity": "1",
+        "fill": "#fff8f0",
+        "fill-opacity": "0.5",
+        "label": true,
+        "label-position": "nw",
+        "color": "#d35400"
+      },
+      "nodes": [
+        "curbclass_invoiceninja_http_in",
+        "curbclass_invoiceninja_process",
+        "curbclass_invoiceninja_http_response",
+        "curbclass_invoiceninja_route",
+        "curbclass_invoiceninja_sync_client",
+        "curbclass_invoiceninja_search_client_http",
+        "curbclass_invoiceninja_process_client_search",
+        "curbclass_invoiceninja_upsert_person_http",
+        "curbclass_invoiceninja_sync_invoice",
+        "curbclass_invoiceninja_search_invoice_client_http",
+        "curbclass_invoiceninja_process_invoice_client_search",
+        "curbclass_invoiceninja_search_opp_http",
+        "curbclass_invoiceninja_process_opp_search",
+        "curbclass_invoiceninja_update_opp_http",
+        "curbclass_invoiceninja_prepare_note",
+        "curbclass_invoiceninja_sync_quote",
+        "curbclass_invoiceninja_search_quote_client_http",
+        "curbclass_invoiceninja_process_quote_client_search",
+        "curbclass_invoiceninja_search_quote_opp_http",
+        "curbclass_invoiceninja_process_quote_opp_search",
+        "curbclass_invoiceninja_update_quote_opp_http",
+        "curbclass_invoiceninja_prepare_quote_note",
+        "curbclass_invoiceninja_check_note_dup_prep",
+        "curbclass_invoiceninja_check_note_dup_http",
+        "curbclass_invoiceninja_check_note_dup_process"
+      ],
+      "x": 74,
+      "y": 139,
+      "w": 3042,
+      "h": 342
+    },
+    {
+      "id": "073da60c-3737-471c-9a30-954079c68a95",
+      "type": "group",
+      "z": "curbclass_ninja_tab",
+      "name": "Reconciliation",
+      "style": {
+        "stroke": "#7d6608",
+        "stroke-opacity": "1",
+        "fill": "#fffde0",
+        "fill-opacity": "0.5",
+        "label": true,
+        "label-position": "nw",
+        "color": "#7d6608"
+      },
+      "nodes": [
+        "curbclass_reconcile_inject",
+        "curbclass_reconcile_fetch_clients_prep",
+        "curbclass_reconcile_fetch_clients_http",
+        "curbclass_reconcile_process_clients",
+        "curbclass_reconcile_rate_limit",
+        "curbclass_reconcile_search_person_http",
+        "curbclass_reconcile_backfill_prep",
+        "curbclass_reconcile_patch_person_http",
+        "lc_cc_reconcile_backfill"
+      ],
+      "x": -16,
+      "y": 499,
+      "w": 2282,
+      "h": 82
+    },
+    {
+      "id": "curbclass_ninja_create_group",
+      "type": "group",
+      "z": "curbclass_ninja_tab",
+      "name": "CurbClass \u2014 Create Ninja Client",
+      "style": {
+        "stroke": "#c7a059",
+        "stroke-opacity": "1",
+        "fill": "#fdfaf2",
+        "fill-opacity": "0.1",
+        "label": true,
+        "label-position": "nw"
+      },
+      "nodes": [
+        "curbclass_create_ninja_client_in",
+        "curbclass_twenty_prepare_ninja_client",
+        "curbclass_twenty_create_ninja_client_http",
+        "curbclass_twenty_update_person_ninja_id",
+        "lc_cc_update_ninja",
+        "curbclass_twenty_update_person_ninja_id_http"
+      ],
+      "x": 54,
+      "y": 419,
+      "w": 1550,
+      "h": 160
+    },
+    {
+      "id": "curbclass_invoiceninja_http_in",
+      "type": "http in",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Invoice Ninja Webhook",
+      "url": "/api/curbclass/invoiceninja/:event",
+      "method": "post",
+      "upload": false,
+      "swaggerDoc": "",
+      "x": 200,
+      "y": 300,
+      "wires": [
+        [
+          "curbclass_invoiceninja_process"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_process",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Process Ninja Webhook",
+      "func": "const event = msg.req && msg.req.params && msg.req.params.event;\nconst data = msg.payload;\n\nif (!event || !data) {\n    msg.payload = { success: false, error: \"Invalid payload\" };\n    msg.statusCode = 400;\n    return [msg, null];\n}\n\n// Respond 200 immediately to Invoice Ninja to acknowledge receipt\nconst responseMsg = {\n    payload: { success: true },\n    statusCode: 200,\n    headers: { \"Content-Type\": \"application/json\" },\n    req: msg.req,\n    res: msg.res\n};\n\n// For invoice/quote events, validate required fields\nif (/^(create|update)_(invoice|quote)$/i.test(event)) {\n    if (data.client_id === undefined || data.status_id === undefined) {\n        node.warn(`CurbClass: Ignoring ${event} webhook missing client_id/status_id`);\n        return [responseMsg, null];\n    }\n}\n\nconst jobMsg = { token: env.get(\"CURBCLASS_TWENTY_TOKEN\"), ninjaEvent: event, ninjaData: data };\nreturn [responseMsg, jobMsg];",
+      "outputs": 2,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 420,
+      "y": 300,
+      "wires": [
+        [
+          "curbclass_invoiceninja_http_response"
+        ],
+        [
+          "curbclass_invoiceninja_route"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_http_response",
+      "type": "http response",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "HTTP Response 200",
+      "statusCode": "",
+      "headers": {},
+      "x": 640,
+      "y": 180,
+      "wires": []
+    },
+    {
+      "id": "curbclass_invoiceninja_route",
+      "type": "switch",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Route by Event Type",
+      "property": "ninjaEvent",
+      "propertyType": "msg",
+      "rules": [
+        {
+          "t": "regex",
+          "v": "^(create_client|update_client)$",
+          "vt": "str",
+          "case": false
+        },
+        {
+          "t": "regex",
+          "v": "^(create_invoice|update_invoice)$",
+          "vt": "str",
+          "case": false
+        },
+        {
+          "t": "regex",
+          "v": "^(create_quote|update_quote)$",
+          "vt": "str",
+          "case": false
+        }
+      ],
+      "checkall": "true",
+      "repair": false,
+      "outputs": 3,
+      "x": 640,
+      "y": 300,
+      "wires": [
+        [
+          "curbclass_invoiceninja_sync_client"
+        ],
+        [
+          "curbclass_invoiceninja_sync_invoice"
+        ],
+        [
+          "curbclass_invoiceninja_sync_quote"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_sync_client",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Prepare Search Person",
+      "func": "const client = msg.ninjaData;\nconst clientId = client.hashed_id || client.id;\nconst primaryContact = client.contacts && client.contacts[0];\nconst email = primaryContact ? (primaryContact.email || \"\").trim().toLowerCase() : \"\";\nconst name = client.name || (primaryContact ? `${primaryContact.first_name} ${primaryContact.last_name}` : \"\");\n\nif (!email) {\n    return null; // Can not map without email\n}\n\nconst nameParts = name.trim().split(\" \");\nconst firstName = nameParts[0] || \"\";\nconst lastName = nameParts.slice(1).join(\" \");\n\nmsg.clientInfo = {\n    id: clientId,\n    firstName: firstName,\n    lastName: lastName,\n    email: email\n};\n\nmsg.method = \"GET\";\nmsg.url = `${env.get(\"TWENTY_BASE_URL\")}/rest/people?filter=emails.primaryEmail[eq]:${encodeURIComponent(email)}`;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.token,\n    \"Host\": \"curbclass.localhost:3000\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 860,
+      "y": 180,
+      "wires": [
+        [
+          "curbclass_invoiceninja_search_client_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_search_client_http",
+      "type": "http request",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Search Person",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1080,
+      "y": 180,
+      "wires": [
+        [
+          "curbclass_invoiceninja_process_client_search"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_process_client_search",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Process Client Search",
+      "func": "const searchData = msg.payload;\nconst existingPerson = searchData.data && searchData.data.people && searchData.data.people[0];\nlet url, method, body;\n\nif (existingPerson) {\n    url = `${env.get(\"TWENTY_BASE_URL\")}/rest/people/${existingPerson.id}`;\n    method = \"PATCH\";\n    body = {\n        invoiceNinjaClientId: msg.clientInfo.id\n    };\n} else {\n    url = env.get(\"TWENTY_BASE_URL\") + \"/rest/people\";\n    method = \"POST\";\n    body = {\n        name: {\n            firstName: msg.clientInfo.firstName,\n            lastName: msg.clientInfo.lastName\n        },\n        emails: {\n            primaryEmail: msg.clientInfo.email\n        },\n        jobTitle: \"Curb Class Client\",\n        invoiceNinjaClientId: msg.clientInfo.id\n    };\n}\n\nmsg.method = method;\nmsg.url = url;\nmsg.payload = body;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.token,\n    \"Host\": \"curbclass.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1320,
+      "y": 180,
+      "wires": [
+        [
+          "curbclass_invoiceninja_upsert_person_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_upsert_person_http",
+      "type": "http request",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Create or Update Person",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1560,
+      "y": 180,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_sync_invoice",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Prepare Search Client for Invoice",
+      "func": "const invoice = msg.ninjaData;\nconst clientHashedId = invoice.client_id;\nconst invoiceStatusId = invoice.status_id;\nconst invoiceAmount = invoice.amount;\n\n// We need to find the person in Twenty who matches clientHashedId\nmsg.invoiceInfo = {\n    statusId: invoiceStatusId,\n    amount: invoiceAmount,\n    balance: invoice.balance,\n    number: invoice.number,\n    invoiceId: invoice.id || invoice.hashed_id,\n    clientHashedId: clientHashedId\n};\n\nmsg.method = \"GET\";\nmsg.url = `${env.get(\"TWENTY_BASE_URL\")}/rest/people?filter=invoiceNinjaClientId[eq]:${encodeURIComponent(clientHashedId)}`;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.token,\n    \"Host\": \"curbclass.localhost:3000\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 860,
+      "y": 300,
+      "wires": [
+        [
+          "curbclass_invoiceninja_search_invoice_client_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_search_invoice_client_http",
+      "type": "http request",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Search Person by Ninja ID",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1080,
+      "y": 300,
+      "wires": [
+        [
+          "curbclass_invoiceninja_process_invoice_client_search"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_process_invoice_client_search",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Process Invoice Mapping",
+      "func": "const searchData = msg.payload;\nconst person = searchData.data && searchData.data.people && searchData.data.people[0];\nif (!person) {\n    node.warn(\"CurbClass: Could not find Person in Twenty with Client ID: \" + msg.invoiceInfo.clientHashedId);\n    return null;\n}\n\nmsg.personId = person.id;\n\n// Next, find the latest Opportunity for this Person to update its stage\nmsg.method = \"GET\";\nmsg.url = `${env.get(\"TWENTY_BASE_URL\")}/rest/opportunities?filter=pointOfContactId[eq]:${encodeURIComponent(person.id)}`;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.token,\n    \"Host\": \"curbclass.localhost:3000\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1320,
+      "y": 300,
+      "wires": [
+        [
+          "curbclass_invoiceninja_search_opp_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_search_opp_http",
+      "type": "http request",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Search Opportunities",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1560,
+      "y": 300,
+      "wires": [
+        [
+          "curbclass_invoiceninja_process_opp_search"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_process_opp_search",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Update Opportunity Stage",
+      "func": "const searchData = msg.payload;\nconst opportunities = searchData.data && searchData.data.opportunities;\nif (!opportunities || opportunities.length === 0) {\n    node.warn(\"CurbClass: No Opportunity found for Person ID: \" + msg.personId);\n    return null;\n}\n\nconst invoiceId = String(msg.invoiceInfo.invoiceId);\n\n// Exact-match: find an opportunity that already has this invoice ID in invoiceNinjaRefs\nconst exactMatch = opportunities.find(o => {\n    try {\n        const refs = o.invoiceNinjaRefs ? JSON.parse(o.invoiceNinjaRefs) : [];\n        return refs.includes(invoiceId);\n    } catch (e) { return false; }\n});\n\nlet opp;\nlet needsWriteback = false;\n\nif (exactMatch) {\n    opp = exactMatch;\n} else {\n    // Heuristic fallback (first-sighting): prefer open, most recently updated\n    const openOpps = opportunities.filter(o => o.stage !== \"CUSTOMER\");\n    const candidates = openOpps.length > 0 ? openOpps : opportunities;\n    candidates.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));\n    opp = candidates[0];\n    if (openOpps.length > 1) {\n        node.warn(`CurbClass: Person ${msg.personId} has ${openOpps.length} open opportunities; picked most recently updated (${opp.id}) for invoice ${invoiceId}.`);\n    }\n    needsWriteback = true;\n}\n\nmsg.opportunityId = opp.id;\n\n// Status IDs in Invoice Ninja: 1=Draft, 2=Sent, 3=Viewed, 4=Paid, etc.\nconst ninjaStatus = msg.invoiceInfo.statusId;\nlet stage = opp.stage;\nif (ninjaStatus === \"4\" || ninjaStatus === 4) {\n    stage = \"CUSTOMER\";\n} else if (ninjaStatus === \"2\" || ninjaStatus === 2 || ninjaStatus === \"3\" || ninjaStatus === 3) {\n    stage = \"PROPOSAL\";\n}\n\nmsg.method = \"PATCH\";\nmsg.url = `${env.get(\"TWENTY_BASE_URL\")}/rest/opportunities/${opp.id}`;\nmsg.payload = { stage: stage };\n\n// Writeback: add invoiceId to invoiceNinjaRefs if this is the first sighting\nif (needsWriteback) {\n    try {\n        const refs = opp.invoiceNinjaRefs ? JSON.parse(opp.invoiceNinjaRefs) : [];\n        if (!refs.includes(invoiceId)) {\n            refs.push(invoiceId);\n            msg.payload.invoiceNinjaRefs = JSON.stringify(refs);\n        }\n    } catch (e) {\n        msg.payload.invoiceNinjaRefs = JSON.stringify([invoiceId]);\n    }\n}\n\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.token,\n    \"Host\": \"curbclass.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1800,
+      "y": 300,
+      "wires": [
+        [
+          "curbclass_invoiceninja_update_opp_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_update_opp_http",
+      "type": "http request",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Update Opportunity",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 2040,
+      "y": 300,
+      "wires": [
+        [
+          "curbclass_invoiceninja_prepare_note"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_prepare_note",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Prepare Invoice Note",
+      "func": "const info = msg.invoiceInfo;\nconst statusLabels = { \"1\": \"Draft\", \"2\": \"Sent\", \"3\": \"Viewed\", \"4\": \"Paid\", \"5\": \"Partial\", \"6\": \"Cancelled\" };\nconst statusLabel = statusLabels[String(info.statusId)] || `Status ${info.statusId}`;\nconst invoiceUrl = `https://invoice.cosmoslab.dev/invoices/${info.invoiceId}`;\nconst displayNumber = info.number || info.invoiceId;\n\nmsg.noteTitle = `Invoice #${displayNumber} - ${statusLabel}`;\nmsg.noteMarkdown = `[View Invoice #${displayNumber} in Invoice Ninja](${invoiceUrl})`;\n\nmsg.twentyToken = msg.token;\nmsg.twentyHost = \"curbclass.localhost:3000\";\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 2280,
+      "y": 300,
+      "wires": [
+        [
+          "curbclass_invoiceninja_check_note_dup_prep"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_sync_quote",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Prepare Search Client for Quote",
+      "func": "const quote = msg.ninjaData;\nconst clientHashedId = quote.client_id;\nconst quoteStatusId = quote.status_id;\nconst quoteAmount = quote.amount;\n\nmsg.quoteInfo = {\n    statusId: quoteStatusId,\n    amount: quoteAmount,\n    balance: quote.balance,\n    number: quote.number,\n    quoteId: quote.id || quote.hashed_id,\n    clientHashedId: clientHashedId\n};\n\nmsg.method = \"GET\";\nmsg.url = `${env.get(\"TWENTY_BASE_URL\")}/rest/people?filter=invoiceNinjaClientId[eq]:${encodeURIComponent(clientHashedId)}`;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.token,\n    \"Host\": \"curbclass.localhost:3000\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 860,
+      "y": 440,
+      "wires": [
+        [
+          "curbclass_invoiceninja_search_quote_client_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_search_quote_client_http",
+      "type": "http request",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Search Person by Ninja ID (Quote)",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1080,
+      "y": 440,
+      "wires": [
+        [
+          "curbclass_invoiceninja_process_quote_client_search"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_process_quote_client_search",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Process Quote Mapping",
+      "func": "const searchData = msg.payload;\nconst person = searchData.data && searchData.data.people && searchData.data.people[0];\nif (!person) {\n    node.warn(\"CurbClass: Could not find Person in Twenty with Client ID: \" + msg.quoteInfo.clientHashedId);\n    return null;\n}\n\nmsg.personId = person.id;\n\n// Next, find the latest Opportunity for this Person to update its stage\nmsg.method = \"GET\";\nmsg.url = `${env.get(\"TWENTY_BASE_URL\")}/rest/opportunities?filter=pointOfContactId[eq]:${encodeURIComponent(person.id)}`;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.token,\n    \"Host\": \"curbclass.localhost:3000\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1320,
+      "y": 440,
+      "wires": [
+        [
+          "curbclass_invoiceninja_search_quote_opp_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_search_quote_opp_http",
+      "type": "http request",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Search Opportunities (Quote)",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1560,
+      "y": 440,
+      "wires": [
+        [
+          "curbclass_invoiceninja_process_quote_opp_search"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_process_quote_opp_search",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Update Opportunity Stage (Quote)",
+      "func": "const searchData = msg.payload;\nconst opportunities = searchData.data && searchData.data.opportunities;\nif (!opportunities || opportunities.length === 0) {\n    node.warn(\"CurbClass: No Opportunity found for Person ID: \" + msg.personId);\n    return null;\n}\n\nconst quoteId = String(msg.quoteInfo.quoteId);\n\n// Exact-match: find an opportunity that already has this quote ID in invoiceNinjaRefs\nconst exactMatch = opportunities.find(o => {\n    try {\n        const refs = o.invoiceNinjaRefs ? JSON.parse(o.invoiceNinjaRefs) : [];\n        return refs.includes(quoteId);\n    } catch (e) { return false; }\n});\n\nlet opp;\nlet needsWriteback = false;\n\nif (exactMatch) {\n    opp = exactMatch;\n} else {\n    // Heuristic fallback (first-sighting): prefer open, most recently updated\n    const openOpps = opportunities.filter(o => o.stage !== \"CUSTOMER\");\n    const candidates = openOpps.length > 0 ? openOpps : opportunities;\n    candidates.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));\n    opp = candidates[0];\n    if (openOpps.length > 1) {\n        node.warn(`CurbClass: Person ${msg.personId} has ${openOpps.length} open opportunities; picked most recently updated (${opp.id}) for quote ${quoteId}.`);\n    }\n    needsWriteback = true;\n}\n\nmsg.opportunityId = opp.id;\n\n// Quote status IDs: 1=Draft, 2=Sent, 3=Approved, 4=Converted, 5=Expired\nconst ninjaStatus = msg.quoteInfo.statusId;\nlet stage = opp.stage;\nif (ninjaStatus === \"1\" || ninjaStatus === 1) {\n    stage = \"MEETING\";\n} else if (ninjaStatus === \"2\" || ninjaStatus === 2 || ninjaStatus === \"3\" || ninjaStatus === 3) {\n    stage = \"PROPOSAL\";\n}\n\nmsg.method = \"PATCH\";\nmsg.url = `${env.get(\"TWENTY_BASE_URL\")}/rest/opportunities/${opp.id}`;\nmsg.payload = { stage: stage };\n\n// Writeback: add quoteId to invoiceNinjaRefs if this is the first sighting\nif (needsWriteback) {\n    try {\n        const refs = opp.invoiceNinjaRefs ? JSON.parse(opp.invoiceNinjaRefs) : [];\n        if (!refs.includes(quoteId)) {\n            refs.push(quoteId);\n            msg.payload.invoiceNinjaRefs = JSON.stringify(refs);\n        }\n    } catch (e) {\n        msg.payload.invoiceNinjaRefs = JSON.stringify([quoteId]);\n    }\n}\n\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.token,\n    \"Host\": \"curbclass.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1800,
+      "y": 440,
+      "wires": [
+        [
+          "curbclass_invoiceninja_update_quote_opp_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_update_quote_opp_http",
+      "type": "http request",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Update Opportunity (Quote)",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 2040,
+      "y": 440,
+      "wires": [
+        [
+          "curbclass_invoiceninja_prepare_quote_note"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_prepare_quote_note",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Prepare Quote Note",
+      "func": "const info = msg.quoteInfo;\nconst statusLabels = { \"1\": \"Draft\", \"2\": \"Sent\", \"3\": \"Approved\", \"4\": \"Converted\", \"5\": \"Expired\" };\nconst statusLabel = statusLabels[String(info.statusId)] || `Status ${info.statusId}`;\nconst quoteUrl = `https://invoice.cosmoslab.dev/quotes/${info.quoteId}`;\nconst displayNumber = info.number || info.quoteId;\n\nmsg.noteTitle = `Quote #${displayNumber} - ${statusLabel}`;\nmsg.noteMarkdown = `[View Quote #${displayNumber} in Invoice Ninja](${quoteUrl})`;\n\nmsg.twentyToken = msg.token;\nmsg.twentyHost = \"curbclass.localhost:3000\";\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 2280,
+      "y": 440,
+      "wires": [
+        [
+          "curbclass_invoiceninja_check_note_dup_prep"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_check_note_dup_prep",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Prepare Note Duplicate Check",
+      "func": "msg.method = \"GET\";\nmsg.url = `${env.get(\"TWENTY_BASE_URL\")}/rest/notes?filter=title[eq]:${encodeURIComponent(msg.noteTitle)}`;\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.twentyToken,\n    \"Host\": msg.twentyHost\n};\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 2520,
+      "y": 300,
+      "wires": [
+        [
+          "curbclass_invoiceninja_check_note_dup_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_check_note_dup_http",
+      "type": "http request",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Search Notes by Title",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 2760,
+      "y": 300,
+      "wires": [
+        [
+          "curbclass_invoiceninja_check_note_dup_process"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_invoiceninja_check_note_dup_process",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Skip if Note Exists",
+      "func": "const notes = msg.payload && msg.payload.data && msg.payload.data.notes;\nif (notes && notes.length > 0) {\n    node.warn(\"CurbClass: Skipping duplicate note - already exists: \" + msg.noteTitle);\n    return null;\n}\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 3000,
+      "y": 300,
+      "wires": [
+        [
+          "curbclass_ninja_note_link"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_reconcile_inject",
+      "type": "inject",
+      "z": "curbclass_ninja_tab",
+      "g": "073da60c-3737-471c-9a30-954079c68a95",
+      "name": "Reconcile Invoice Ninja Client IDs (30 min)",
+      "props": [
+        {
+          "p": "payload"
+        }
+      ],
+      "repeat": "1800",
+      "crontab": "",
+      "once": false,
+      "onceDelay": 0.1,
+      "topic": "",
+      "payload": "",
+      "payloadType": "date",
+      "x": 200,
+      "y": 540,
+      "wires": [
+        [
+          "curbclass_reconcile_fetch_clients_prep"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_reconcile_fetch_clients_prep",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "073da60c-3737-471c-9a30-954079c68a95",
+      "name": "Prepare Fetch Ninja Clients",
+      "func": "msg.method = \"GET\";\nmsg.url = \"http://bodhi.lab:9280/api/v1/clients?per_page=100&page=1\";\nmsg.headers = {\n    \"X-Api-Token\": env.get(\"CURBCLASS_INVOICENINJA_TOKEN\"),\n    \"Accept\": \"application/json\"\n};\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 440,
+      "y": 540,
+      "wires": [
+        [
+          "curbclass_reconcile_fetch_clients_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_reconcile_fetch_clients_http",
+      "type": "http request",
+      "z": "curbclass_ninja_tab",
+      "g": "073da60c-3737-471c-9a30-954079c68a95",
+      "name": "Get Ninja Clients",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 680,
+      "y": 540,
+      "wires": [
+        [
+          "curbclass_reconcile_process_clients"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_reconcile_process_clients",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "073da60c-3737-471c-9a30-954079c68a95",
+      "name": "Process Ninja Clients Page",
+      "func": "const clients = (msg.payload && msg.payload.data) || [];\nconst pagination = msg.payload && msg.payload.meta && msg.payload.meta.pagination;\nif (pagination && pagination.total_pages > 1) {\n    node.warn(`CurbClass Reconciliation: Invoice Ninja has ${pagination.total_pages} pages of clients, only checking page 1 (per_page=100)`);\n}\n\nconst token = env.get(\"CURBCLASS_TWENTY_TOKEN\");\nconst msgs = [];\nfor (const client of clients) {\n    if (client.is_deleted) continue;\n    const contact = client.contacts && client.contacts[0];\n    const email = contact && contact.email;\n    if (!email) continue;\n\n    const m = {};\n    m.ninjaClientId = client.id;\n    m.method = \"GET\";\n    m.url = `${env.get(\"TWENTY_BASE_URL\")}/rest/people?filter=emails.primaryEmail[eq]:${encodeURIComponent(email)}`;\n    m.headers = {\n        \"Authorization\": \"Bearer \" + token,\n        \"Host\": \"curbclass.localhost:3000\"\n    };\n    msgs.push(m);\n}\nreturn [msgs];",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 920,
+      "y": 540,
+      "wires": [
+        [
+          "curbclass_reconcile_rate_limit"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_reconcile_rate_limit",
+      "type": "delay",
+      "z": "curbclass_ninja_tab",
+      "g": "073da60c-3737-471c-9a30-954079c68a95",
+      "name": "Rate Limit (1/sec)",
+      "pauseType": "rate",
+      "timeout": "5",
+      "timeoutUnits": "seconds",
+      "rate": "1",
+      "nbRateUnits": "1",
+      "rateUnits": "second",
+      "randomFirst": "1",
+      "randomLast": "5",
+      "randomUnits": "seconds",
+      "drop": false,
+      "allowrate": false,
+      "outputs": 1,
+      "x": 1160,
+      "y": 540,
+      "wires": [
+        [
+          "curbclass_reconcile_search_person_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_reconcile_search_person_http",
+      "type": "http request",
+      "z": "curbclass_ninja_tab",
+      "g": "073da60c-3737-471c-9a30-954079c68a95",
+      "name": "Search Person by Email",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1400,
+      "y": 540,
+      "wires": [
+        [
+          "curbclass_reconcile_backfill_prep"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_reconcile_backfill_prep",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "073da60c-3737-471c-9a30-954079c68a95",
+      "name": "Backfill Ninja Client ID if Missing",
+      "func": "const people = msg.payload && msg.payload.data && msg.payload.data.people;\nconst person = people && people[0];\nif (!person || person.invoiceNinjaClientId) {\n    return null; // no match, or already linked\n}\n\nnode.warn(`CurbClass Reconciliation: Backfilling invoiceNinjaClientId=${msg.ninjaClientId} for person ${person.id}`);\n\nmsg.method = \"PATCH\";\nmsg.url = `${env.get(\"TWENTY_BASE_URL\")}/rest/people/${person.id}`;\nmsg.payload = { invoiceNinjaClientId: msg.ninjaClientId };\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1640,
+      "y": 540,
+      "wires": [
+        [
+          "lc_cc_reconcile_backfill"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_reconcile_patch_person_http",
+      "type": "http request",
+      "z": "curbclass_ninja_tab",
+      "g": "073da60c-3737-471c-9a30-954079c68a95",
+      "name": "Patch Person Ninja Client ID",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 2120,
+      "y": 540,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "lc_cc_reconcile_backfill",
+      "type": "link call",
+      "z": "curbclass_ninja_tab",
+      "g": "073da60c-3737-471c-9a30-954079c68a95",
+      "name": "Add Twenty Auth Headers",
+      "links": [
+        "cc_twenty_hdr_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 1880,
+      "y": 540,
+      "wires": [
+        [
+          "curbclass_reconcile_patch_person_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_prepare_ninja_client",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "curbclass_ninja_create_group",
+      "name": "Prepare Invoice Ninja Client",
+      "func": "delete msg.res;\ndelete msg.req;\n\nconst person = msg.payload && msg.payload.data && (msg.payload.data.createPerson || msg.payload.data.updatePerson);\nif (!person) {\n    return null;\n}\n\nconst email = person.emails ? (person.emails.primaryEmail || '') : '';\nconst firstName = person.name ? (person.name.firstName || '') : '';\nconst lastName = person.name ? (person.name.lastName || '') : '';\nconst name = `${firstName} ${lastName}`.trim();\n\nif (person.invoiceNinjaClientId || !email) {\n    return null;\n}\n\nmsg.personId = person.id;\nmsg.method = \"POST\";\nmsg.url = \"http://bodhi.lab:9280/api/v1/clients\";\nmsg.payload = {\n    name: name,\n    contacts: [\n        {\n            first_name: firstName,\n            last_name: lastName,\n            email: email,\n            send_email: true\n        }\n    ]\n};\nmsg.headers = {\n    \"X-Api-Token\": env.get(\"CURBCLASS_INVOICENINJA_TOKEN\"),\n    \"Content-Type\": \"application/json\",\n    \"Accept\": \"application/json\"\n};\n\nreturn msg;",
+      "outputs": 1,
+      "x": 440,
+      "y": 500,
+      "wires": [
+        [
+          "curbclass_twenty_create_ninja_client_http",
+          "ccp_link_out_ninja"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_create_ninja_client_http",
+      "type": "http request",
+      "z": "curbclass_ninja_tab",
+      "g": "curbclass_ninja_create_group",
+      "name": "Create Ninja Client",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "x": 680,
+      "y": 500,
+      "wires": [
+        [
+          "curbclass_twenty_update_person_ninja_id"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_update_person_ninja_id",
+      "type": "function",
+      "z": "curbclass_ninja_tab",
+      "g": "curbclass_ninja_create_group",
+      "name": "Prepare Twenty Person Update",
+      "func": "const client = msg.payload && msg.payload.data;\nconst clientId = client ? (client.hashed_id || client.id) : '';\n\nif (!clientId) {\n    node.warn(\"CurbClass: Failed to create client in Invoice Ninja\");\n    return null;\n}\n\nmsg.method = \"PATCH\";\nmsg.url = `${env.get(\"TWENTY_BASE_URL\")}/rest/people/${msg.personId}`;\nmsg.payload = {\n    invoiceNinjaClientId: clientId\n};\n\nreturn msg;",
+      "outputs": 1,
+      "x": 920,
+      "y": 500,
+      "wires": [
+        [
+          "lc_cc_update_ninja",
+          "ccp_link_out_done"
+        ]
+      ]
+    },
+    {
+      "id": "lc_cc_update_ninja",
+      "type": "link call",
+      "z": "curbclass_ninja_tab",
+      "g": "curbclass_ninja_create_group",
+      "name": "Add Twenty Auth Headers",
+      "links": [
+        "cc_twenty_hdr_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 1160,
+      "y": 500,
+      "wires": [
+        [
+          "curbclass_twenty_update_person_ninja_id_http"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_update_person_ninja_id_http",
+      "type": "http request",
+      "z": "curbclass_ninja_tab",
+      "g": "curbclass_ninja_create_group",
+      "name": "Update Person Client ID",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "x": 1380,
+      "y": 500,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "curbclass_create_ninja_client_in",
+      "type": "link in",
+      "z": "curbclass_ninja_tab",
+      "g": "curbclass_ninja_create_group",
+      "name": "Create Ninja Client (Trigger)",
+      "links": [],
+      "x": 200,
+      "y": 500,
+      "wires": [
+        [
+          "curbclass_twenty_prepare_ninja_client"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_ninja_note_link",
+      "type": "link call",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "name": "Create Note + Link",
+      "links": [
+        "nl_link_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 3220,
+      "y": 300,
+      "wires": [
+        []
+      ]
+    }
+  ]
+}

@@ -1,0 +1,644 @@
+{
+  "id": "crm_shared_tab",
+  "label": "CRM Shared Utilities",
+  "disabled": false,
+  "info": "Shared subflows for Upserting Persons, Note/Task creation, and Auth Header injection",
+  "env": [
+    {
+      "name": "CHASSISSHIELD_TWENTY_TOKEN",
+      "type": "str",
+      "value": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjVmYzVlZTlhLTYxOGQtNDg5My04ZGM3LTQ5YWY3MmNhMmRiYiJ9.eyJzdWIiOiJlNjcxNzhmMi03ZjcyLTRlNGEtOTdlOC0yYjc0MzEzNzg0OGMiLCJ0eXBlIjoiQVBJX0tFWSIsIndvcmtzcGFjZUlkIjoiZTY3MTc4ZjItN2Y3Mi00ZTRhLTk3ZTgtMmI3NDMxMzc4NDhjIiwiaWF0IjoxNzgxNzQwNDk4LCJleHAiOjQ5MzUzNDA0OTcsImp0aSI6IjgyYzg3MDhkLTVjNWMtNDNhNC1hZDNjLTkyZGY0MmYzMWUxMSJ9.2qEzBqDJYLqO-idhoqFLFAOj_BlvMtlv0IurVJS_KX1N0nm5OeiSMY3TtyE1hxD5KGry7I6bj2vh54EJYarpxQ"
+    },
+    {
+      "name": "CURBCLASS_TWENTY_TOKEN",
+      "type": "str",
+      "value": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjVmYzVlZTlhLTYxOGQtNDg5My04ZGM3LTQ5YWY3MmNhMmRiYiJ9.eyJzdWIiOiJlNjcxNzhmMi03ZjcyLTRlNGEtOTdlOC0yYjc0MzEzNzg0OGMiLCJ0eXBlIjoiQVBJX0tFWSIsIndvcmtzcGFjZUlkIjoiZTY3MTc4ZjItN2Y3Mi00ZTRhLTk3ZTgtMmI3NDMxMzc4NDhjIiwiaWF0IjoxNzgxODMyNjA2LCJleHAiOjQ5MzUzNDYyMDUsImp0aSI6ImEwYWY5N2M2LWNkNDctNDJmZS1iYTYzLThmMTQwNzFiMzA5MiJ9.PWZYMtCZrz6FBtWwSekY1vgOfLEpoOHDlqQqRLo0XTAgKNNGJSamNi_fJk4_JfkFHfdEZNXD0_OjLHgVsoU4vA"
+    },
+    {
+      "name": "GEMINI_API_KEY",
+      "type": "cred"
+    },
+    {
+      "name": "CURBCLASS_INVOICENINJA_TOKEN",
+      "type": "str",
+      "value": "96nrvSgddFbUA2JLm38I2FJHirK8XcBpl7e31iMRy25GnxLa5QdUhMCSfpbCSmcX"
+    },
+    {
+      "name": "TWENTY_BASE_URL",
+      "type": "str",
+      "value": "http://bodhi.lab:3100"
+    },
+    {
+      "name": "RESEND_API_KEY",
+      "type": "str",
+      "value": "re_NMu8LEhZ_79htiqBBLKyfDZAcwnBPvGMb"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "d3649e96-2fcf-4bf3-9b51-7a66473b3c1a",
+      "type": "group",
+      "z": "crm_shared_tab",
+      "name": "Shared: Person Upsert",
+      "style": {
+        "stroke": "#6c3483",
+        "stroke-opacity": "1",
+        "fill": "#fdf5ff",
+        "fill-opacity": "0.5",
+        "label": true,
+        "label-position": "nw",
+        "color": "#6c3483"
+      },
+      "nodes": [
+        "ps_link_in",
+        "ps_search_request",
+        "ps_link_out"
+      ],
+      "x": 159,
+      "y": 79,
+      "w": 1282,
+      "h": 82
+    },
+    {
+      "id": "64afe21e-51f7-4889-9014-73ade2bf7aa9",
+      "type": "group",
+      "z": "crm_shared_tab",
+      "name": "Shared: Note Creation",
+      "style": {
+        "stroke": "#6c3483",
+        "stroke-opacity": "1",
+        "fill": "#fdf5ff",
+        "fill-opacity": "0.5",
+        "label": true,
+        "label-position": "nw",
+        "color": "#6c3483"
+      },
+      "nodes": [
+        "nl_link_in",
+        "nl_create_note",
+        "nl_http_create_note",
+        "nl_prepare_targets",
+        "nl_http_link",
+        "nl_format_result",
+        "nl_link_out"
+      ],
+      "x": 159,
+      "y": 239,
+      "w": 1522,
+      "h": 82
+    },
+    {
+      "id": "f2b38123-817e-4be3-86cf-1738a80f914b",
+      "type": "group",
+      "z": "crm_shared_tab",
+      "name": "Shared: Task Creation",
+      "style": {
+        "stroke": "#6c3483",
+        "stroke-opacity": "1",
+        "fill": "#fdf5ff",
+        "fill-opacity": "0.5",
+        "label": true,
+        "label-position": "nw",
+        "color": "#6c3483"
+      },
+      "nodes": [
+        "tl_link_in",
+        "tl_create_task",
+        "tl_http_create_task",
+        "tl_prepare_targets",
+        "tl_http_link",
+        "tl_format_result",
+        "tl_link_out"
+      ],
+      "x": 159,
+      "y": 399,
+      "w": 1522,
+      "h": 82
+    },
+    {
+      "id": "c862c6a7-e70b-4e13-b95d-5636c5fc0294",
+      "type": "group",
+      "z": "crm_shared_tab",
+      "name": "Shared: Auth Headers",
+      "style": {
+        "stroke": "#117a65",
+        "stroke-opacity": "1",
+        "fill": "#f0fffd",
+        "fill-opacity": "0.5",
+        "label": true,
+        "label-position": "nw",
+        "color": "#117a65"
+      },
+      "nodes": [
+        "cc_twenty_hdr_in",
+        "cc_twenty_hdr_fn",
+        "cc_twenty_hdr_out",
+        "cs_twenty_hdr_in",
+        "cs_twenty_hdr_fn",
+        "cs_twenty_hdr_out"
+      ],
+      "x": 159,
+      "y": 159,
+      "w": 562,
+      "h": 162
+    },
+    {
+      "id": "c6d794ad-e30b-4411-a468-34ef322cf63a",
+      "type": "group",
+      "z": "crm_shared_tab",
+      "name": "Utility: Token Export",
+      "style": {
+        "stroke": "#555555",
+        "stroke-opacity": "1",
+        "fill": "#f5f5f5",
+        "fill-opacity": "0.5",
+        "label": true,
+        "label-position": "nw",
+        "color": "#555555"
+      },
+      "nodes": [
+        "ttc_token_export_inject",
+        "ttc_token_export_fn"
+      ],
+      "x": 84,
+      "y": 139,
+      "w": 562,
+      "h": 82
+    },
+    {
+      "id": "nl_link_in",
+      "type": "link in",
+      "z": "crm_shared_tab",
+      "g": "64afe21e-51f7-4889-9014-73ade2bf7aa9",
+      "name": "Create Note + Link",
+      "links": [],
+      "x": 200,
+      "y": 280,
+      "wires": [
+        [
+          "nl_create_note"
+        ]
+      ]
+    },
+    {
+      "id": "nl_create_note",
+      "type": "function",
+      "z": "crm_shared_tab",
+      "g": "64afe21e-51f7-4889-9014-73ade2bf7aa9",
+      "name": "Build Create Note Request",
+      "func": "msg.method = \"POST\";\nmsg.url = env.get(\"TWENTY_BASE_URL\") + \"/rest/notes\";\nmsg.payload = {\n    title: msg.noteTitle,\n    bodyV2: { markdown: msg.noteMarkdown || \"\" }\n};\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.twentyToken,\n    \"Host\": msg.twentyHost,\n    \"Content-Type\": \"application/json\"\n};\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 440,
+      "y": 280,
+      "wires": [
+        [
+          "nl_http_create_note"
+        ]
+      ]
+    },
+    {
+      "id": "nl_http_create_note",
+      "type": "http request",
+      "z": "crm_shared_tab",
+      "g": "64afe21e-51f7-4889-9014-73ade2bf7aa9",
+      "name": "Create Note",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 680,
+      "y": 280,
+      "wires": [
+        [
+          "nl_prepare_targets"
+        ]
+      ]
+    },
+    {
+      "id": "nl_prepare_targets",
+      "type": "function",
+      "z": "crm_shared_tab",
+      "g": "64afe21e-51f7-4889-9014-73ade2bf7aa9",
+      "name": "Prepare Note Targets",
+      "func": "const note = msg.payload && msg.payload.data && msg.payload.data.createNote;\nconst noteId = note ? note.id : '';\n\nif (!noteId) {\n    msg.noteResult = {\n        success: false,\n        error: 'Note creation failed',\n        details: msg.payload && msg.payload.errors\n    };\n    return [null, msg];\n}\n\nconst targets = [];\nif (msg.personId) {\n    targets.push({ noteId: noteId, targetPersonId: msg.personId });\n}\nif (msg.opportunityId) {\n    targets.push({ noteId: noteId, targetOpportunityId: msg.opportunityId });\n}\n\nif (targets.length === 0) {\n    msg.noteResult = { success: true, noteId: noteId, linked: 0 };\n    return [null, msg];\n}\n\nmsg.noteId = noteId;\nconst token = msg.twentyToken;\nconst host = msg.twentyHost;\n\nconst msgs = targets.map(payload => {\n    const m = Object.assign({}, msg);\n    m.method = \"POST\";\n    m.url = env.get(\"TWENTY_BASE_URL\") + \"/rest/noteTargets\";\n    m.headers = {\n        \"Authorization\": \"Bearer \" + token,\n        \"Host\": host,\n        \"Content-Type\": \"application/json\"\n    };\n    m.payload = payload;\n    return m;\n});\n\nreturn [msgs, null];",
+      "outputs": 2,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 920,
+      "y": 280,
+      "wires": [
+        [
+          "nl_http_link"
+        ],
+        [
+          "nl_link_out"
+        ]
+      ]
+    },
+    {
+      "id": "nl_http_link",
+      "type": "http request",
+      "z": "crm_shared_tab",
+      "g": "64afe21e-51f7-4889-9014-73ade2bf7aa9",
+      "name": "Link Note",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1160,
+      "y": 280,
+      "wires": [
+        [
+          "nl_format_result"
+        ]
+      ]
+    },
+    {
+      "id": "nl_format_result",
+      "type": "function",
+      "z": "crm_shared_tab",
+      "g": "64afe21e-51f7-4889-9014-73ade2bf7aa9",
+      "name": "Format Result",
+      "func": "const target = msg.payload && msg.payload.data && msg.payload.data.createNoteTarget;\nmsg.noteResult = {\n    success: !!target,\n    noteId: msg.noteId,\n    error: target ? undefined : (msg.payload && msg.payload.errors)\n};\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1400,
+      "y": 280,
+      "wires": [
+        [
+          "nl_link_out"
+        ]
+      ]
+    },
+    {
+      "id": "nl_link_out",
+      "type": "link out",
+      "z": "crm_shared_tab",
+      "g": "64afe21e-51f7-4889-9014-73ade2bf7aa9",
+      "name": "Create Note + Link (return)",
+      "mode": "return",
+      "links": [],
+      "x": 1640,
+      "y": 280
+    },
+    {
+      "id": "ps_link_in",
+      "type": "link in",
+      "z": "crm_shared_tab",
+      "g": "d3649e96-2fcf-4bf3-9b51-7a66473b3c1a",
+      "name": "Search & Upsert Person",
+      "links": [],
+      "x": 200,
+      "y": 120,
+      "wires": [
+        [
+          "ps_search_request"
+        ]
+      ]
+    },
+    {
+      "id": "ps_search_request",
+      "type": "function",
+      "z": "crm_shared_tab",
+      "g": "d3649e96-2fcf-4bf3-9b51-7a66473b3c1a",
+      "name": "Search & Upsert Person (Robust)",
+      "func": "const axios = this.axios || axios;\n\nconst token = msg.twentyToken;\nconst host = msg.twentyHost;\nconst email = msg.lead.email;\n\nconst headers = {\n    \"Authorization\": \"Bearer \" + token,\n    \"Host\": host,\n    \"Content-Type\": \"application/json\"\n};\n\nconst BASE = env.get(\"TWENTY_BASE_URL\");\n\n(async () => {\n    try {\n        // 1. Search active people\n        const activeRes = await axios.get(`${BASE}/rest/people?filter=emails.primaryEmail[eq]:${encodeURIComponent(email)}`, { headers });\n        let existingPerson = activeRes.data && activeRes.data.data && activeRes.data.data.people && activeRes.data.data.people[0];\n        let isDeleted = false;\n\n        // 2. If not found, search in deleted people\n        if (!existingPerson) {\n            const deletedRes = await axios.get(`${BASE}/rest/people?filter=deletedAt[is]:NOT_NULL`, { headers });\n            const deletedPeople = deletedRes.data && deletedRes.data.data && deletedRes.data.data.people || [];\n            existingPerson = deletedPeople.find(p => p.emails && p.emails.primaryEmail && p.emails.primaryEmail.toLowerCase() === email.toLowerCase());\n            if (existingPerson) {\n                isDeleted = true;\n            }\n        }\n\n        let url, method, body;\n        if (existingPerson) {\n            url = `${BASE}/rest/people/${existingPerson.id}`;\n            method = 'PATCH';\n            body = {};\n            \n            // Restore if it was soft-deleted\n            if (isDeleted) {\n                body.deletedAt = null;\n            }\n\n            // Update fields\n            if (msg.lead.firstName || msg.lead.lastName) {\n                body.name = {};\n                if (msg.lead.firstName) body.name.firstName = msg.lead.firstName;\n                if (msg.lead.lastName) body.name.lastName = msg.lead.lastName;\n            }\n            if (msg.jobTitle) body.jobTitle = msg.jobTitle;\n            if (msg.lead.phone) body.phones = { primaryPhoneNumber: msg.lead.phone };\n            \n            // Also update invoiceNinjaClientId if passed\n            if (msg.clientInfo && msg.clientInfo.id) {\n                body.invoiceNinjaClientId = msg.clientInfo.id;\n            }\n        } else {\n            url = `${BASE}/rest/people`;\n            method = 'POST';\n            body = {\n                name: { firstName: msg.lead.firstName, lastName: msg.lead.lastName },\n                emails: { primaryEmail: email },\n                jobTitle: msg.jobTitle\n            };\n            if (msg.lead.phone) {\n                body.phones = { primaryPhoneNumber: msg.lead.phone };\n            }\n            if (msg.clientInfo && msg.clientInfo.id) {\n                body.invoiceNinjaClientId = msg.clientInfo.id;\n            }\n        }\n\n        const actionRes = await axios({\n            method: method,\n            url: url,\n            data: body,\n            headers: headers\n        });\n\n        msg.payload = actionRes.data;\n        node.send(msg);\n    } catch (error) {\n        node.warn(\"Error in Search & Upsert Person: \" + (error.response ? JSON.stringify(error.response.data) : error.message));\n        msg.payload = error.response ? error.response.data : { error: error.message };\n        node.send(msg);\n    }\n})();\n\nreturn null;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [
+        {
+          "var": "axios",
+          "module": "axios"
+        }
+      ],
+      "x": 440,
+      "y": 120,
+      "wires": [
+        [
+          "ps_link_out"
+        ]
+      ]
+    },
+    {
+      "id": "ps_link_out",
+      "type": "link out",
+      "z": "crm_shared_tab",
+      "g": "d3649e96-2fcf-4bf3-9b51-7a66473b3c1a",
+      "name": "Search & Upsert Person (return)",
+      "mode": "return",
+      "links": [],
+      "x": 1400,
+      "y": 120
+    },
+    {
+      "id": "tl_link_in",
+      "type": "link in",
+      "z": "crm_shared_tab",
+      "g": "f2b38123-817e-4be3-86cf-1738a80f914b",
+      "name": "Create Task + Link",
+      "links": [],
+      "x": 200,
+      "y": 440,
+      "wires": [
+        [
+          "tl_create_task"
+        ]
+      ]
+    },
+    {
+      "id": "tl_create_task",
+      "type": "function",
+      "z": "crm_shared_tab",
+      "g": "f2b38123-817e-4be3-86cf-1738a80f914b",
+      "name": "Build Create Task Request",
+      "func": "msg.method = \"POST\";\nmsg.url = env.get(\"TWENTY_BASE_URL\") + \"/rest/tasks\";\nmsg.payload = {\n    title: msg.taskTitle,\n    bodyV2: { markdown: msg.taskMarkdown || \"\" },\n    status: \"TODO\",\n    dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()\n};\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + msg.twentyToken,\n    \"Host\": msg.twentyHost,\n    \"Content-Type\": \"application/json\"\n};\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 440,
+      "y": 440,
+      "wires": [
+        [
+          "tl_http_create_task"
+        ]
+      ]
+    },
+    {
+      "id": "tl_http_create_task",
+      "type": "http request",
+      "z": "crm_shared_tab",
+      "g": "f2b38123-817e-4be3-86cf-1738a80f914b",
+      "name": "Create Task",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 680,
+      "y": 440,
+      "wires": [
+        [
+          "tl_prepare_targets"
+        ]
+      ]
+    },
+    {
+      "id": "tl_prepare_targets",
+      "type": "function",
+      "z": "crm_shared_tab",
+      "g": "f2b38123-817e-4be3-86cf-1738a80f914b",
+      "name": "Prepare Task Targets",
+      "func": "const task = msg.payload && msg.payload.data && msg.payload.data.createTask;\nconst taskId = task ? task.id : '';\n\nif (!taskId) {\n    msg.taskResult = {\n        success: false,\n        error: 'Task creation failed',\n        details: msg.payload && msg.payload.errors\n    };\n    return [null, msg];\n}\n\nconst targets = [];\nif (msg.personId) {\n    targets.push({ taskId: taskId, targetPersonId: msg.personId });\n}\nif (msg.opportunityId) {\n    targets.push({ taskId: taskId, targetOpportunityId: msg.opportunityId });\n}\n\nif (targets.length === 0) {\n    msg.taskResult = { success: true, taskId: taskId, linked: 0 };\n    return [null, msg];\n}\n\nmsg.taskId = taskId;\nconst token = msg.twentyToken;\nconst host = msg.twentyHost;\n\nconst msgs = targets.map(payload => {\n    const m = Object.assign({}, msg);\n    m.method = \"POST\";\n    m.url = env.get(\"TWENTY_BASE_URL\") + \"/rest/taskTargets\";\n    m.headers = {\n        \"Authorization\": \"Bearer \" + token,\n        \"Host\": host,\n        \"Content-Type\": \"application/json\"\n    };\n    m.payload = payload;\n    return m;\n});\n\nreturn [msgs, null];",
+      "outputs": 2,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 920,
+      "y": 440,
+      "wires": [
+        [
+          "tl_http_link"
+        ],
+        [
+          "tl_link_out"
+        ]
+      ]
+    },
+    {
+      "id": "tl_http_link",
+      "type": "http request",
+      "z": "crm_shared_tab",
+      "g": "f2b38123-817e-4be3-86cf-1738a80f914b",
+      "name": "Link Task",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1160,
+      "y": 440,
+      "wires": [
+        [
+          "tl_format_result"
+        ]
+      ]
+    },
+    {
+      "id": "tl_format_result",
+      "type": "function",
+      "z": "crm_shared_tab",
+      "g": "f2b38123-817e-4be3-86cf-1738a80f914b",
+      "name": "Format Result",
+      "func": "const target = msg.payload && msg.payload.data && msg.payload.data.createTaskTarget;\nmsg.taskResult = {\n    success: !!target,\n    taskId: msg.taskId,\n    error: target ? undefined : (msg.payload && msg.payload.errors)\n};\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1400,
+      "y": 440,
+      "wires": [
+        [
+          "tl_link_out"
+        ]
+      ]
+    },
+    {
+      "id": "tl_link_out",
+      "type": "link out",
+      "z": "crm_shared_tab",
+      "g": "f2b38123-817e-4be3-86cf-1738a80f914b",
+      "name": "Create Task + Link (return)",
+      "mode": "return",
+      "links": [],
+      "x": 1640,
+      "y": 440
+    },
+    {
+      "id": "ttc_token_export_inject",
+      "type": "inject",
+      "z": "crm_shared_tab",
+      "g": "c6d794ad-e30b-4411-a468-34ef322cf63a",
+      "name": "On Deploy",
+      "props": [
+        {
+          "p": "payload"
+        }
+      ],
+      "repeat": "",
+      "crontab": "",
+      "once": true,
+      "onceDelay": 0.1,
+      "topic": "",
+      "payload": "",
+      "payloadType": "date",
+      "x": 200,
+      "y": 180,
+      "wires": [
+        [
+          "ttc_token_export_fn"
+        ]
+      ]
+    },
+    {
+      "id": "ttc_token_export_fn",
+      "type": "function",
+      "z": "crm_shared_tab",
+      "g": "c6d794ad-e30b-4411-a468-34ef322cf63a",
+      "name": "Export Tokens to Global (for Trash Cleanup tool)",
+      "func": "// Export flow env tokens to global context for use by trash cleanup function\ntry {\n    var ccToken = env.get(\"CURBCLASS_TWENTY_TOKEN\");\n    if (ccToken) {\n        global.set(\"CURBCLASS_TWENTY_TOKEN\", ccToken);\n        node.warn(\"Exported CURBCLASS_TWENTY_TOKEN to global\");\n    }\n} catch(e) {\n    node.warn(\"Failed to export CURBCLASS_TWENTY_TOKEN: \" + e.message);\n}\ntry {\n    var csToken = env.get(\"CHASSISSHIELD_TWENTY_TOKEN\");\n    if (csToken) {\n        global.set(\"CHASSISSHIELD_TWENTY_TOKEN\", csToken);\n        node.warn(\"Exported CHASSISSHIELD_TWENTY_TOKEN to global\");\n    }\n} catch(e) {\n    node.warn(\"Failed to export CHASSISSHIELD_TWENTY_TOKEN: \" + e.message);\n}\nreturn null;\n",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 440,
+      "y": 180,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "cc_twenty_hdr_in",
+      "type": "link in",
+      "z": "crm_shared_tab",
+      "g": "c862c6a7-e70b-4e13-b95d-5636c5fc0294",
+      "name": "CurbClass Twenty Headers",
+      "links": [],
+      "x": 200,
+      "y": 200,
+      "wires": [
+        [
+          "cc_twenty_hdr_fn"
+        ]
+      ]
+    },
+    {
+      "id": "cc_twenty_hdr_fn",
+      "type": "function",
+      "z": "crm_shared_tab",
+      "g": "c862c6a7-e70b-4e13-b95d-5636c5fc0294",
+      "name": "Set CurbClass Auth Headers",
+      "func": "msg.headers = {\n    \"Authorization\": \"Bearer \" + env.get(\"CURBCLASS_TWENTY_TOKEN\"),\n    \"Host\": \"curbclass.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 440,
+      "y": 200,
+      "wires": [
+        [
+          "cc_twenty_hdr_out"
+        ]
+      ]
+    },
+    {
+      "id": "cc_twenty_hdr_out",
+      "type": "link out",
+      "z": "crm_shared_tab",
+      "g": "c862c6a7-e70b-4e13-b95d-5636c5fc0294",
+      "name": "CurbClass Twenty Headers (return)",
+      "mode": "return",
+      "links": [],
+      "x": 680,
+      "y": 200
+    },
+    {
+      "id": "cs_twenty_hdr_in",
+      "type": "link in",
+      "z": "crm_shared_tab",
+      "g": "c862c6a7-e70b-4e13-b95d-5636c5fc0294",
+      "name": "ChassisShield Twenty Headers",
+      "links": [],
+      "x": 200,
+      "y": 280,
+      "wires": [
+        [
+          "cs_twenty_hdr_fn"
+        ]
+      ]
+    },
+    {
+      "id": "cs_twenty_hdr_fn",
+      "type": "function",
+      "z": "crm_shared_tab",
+      "g": "c862c6a7-e70b-4e13-b95d-5636c5fc0294",
+      "name": "Set ChassisShield Auth Headers",
+      "func": "msg.headers = {\n    \"Authorization\": \"Bearer \" + env.get(\"CHASSISSHIELD_TWENTY_TOKEN\"),\n    \"Host\": \"chassisshield.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 440,
+      "y": 280,
+      "wires": [
+        [
+          "cs_twenty_hdr_out"
+        ]
+      ]
+    },
+    {
+      "id": "cs_twenty_hdr_out",
+      "type": "link out",
+      "z": "crm_shared_tab",
+      "g": "c862c6a7-e70b-4e13-b95d-5636c5fc0294",
+      "name": "ChassisShield Twenty Headers (return)",
+      "mode": "return",
+      "links": [],
+      "x": 680,
+      "y": 280
+    }
+  ]
+}
