@@ -6,22 +6,19 @@
   "env": [
     {
       "name": "CHASSISSHIELD_TWENTY_TOKEN",
-      "type": "str",
-      "value": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjVmYzVlZTlhLTYxOGQtNDg5My04ZGM3LTQ5YWY3MmNhMmRiYiJ9.eyJzdWIiOiJlNjcxNzhmMi03ZjcyLTRlNGEtOTdlOC0yYjc0MzEzNzg0OGMiLCJ0eXBlIjoiQVBJX0tFWSIsIndvcmtzcGFjZUlkIjoiZTY3MTc4ZjItN2Y3Mi00ZTRhLTk3ZTgtMmI3NDMxMzc4NDhjIiwiaWF0IjoxNzgxNzQwNDk4LCJleHAiOjQ5MzUzNDA0OTcsImp0aSI6IjgyYzg3MDhkLTVjNWMtNDNhNC1hZDNjLTkyZGY0MmYzMWUxMSJ9.2qEzBqDJYLqO-idhoqFLFAOj_BlvMtlv0IurVJS_KX1N0nm5OeiSMY3TtyE1hxD5KGry7I6bj2vh54EJYarpxQ"
+      "value": ""
     },
     {
       "name": "CURBCLASS_TWENTY_TOKEN",
-      "type": "str",
-      "value": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjVmYzVlZTlhLTYxOGQtNDg5My04ZGM3LTQ5YWY3MmNhMmRiYiJ9.eyJzdWIiOiJlNjcxNzhmMi03ZjcyLTRlNGEtOTdlOC0yYjc0MzEzNzg0OGMiLCJ0eXBlIjoiQVBJX0tFWSIsIndvcmtzcGFjZUlkIjoiZTY3MTc4ZjItN2Y3Mi00ZTRhLTk3ZTgtMmI3NDMxMzc4NDhjIiwiaWF0IjoxNzgxODMyNjA2LCJleHAiOjQ5MzUzNDYyMDUsImp0aSI6ImEwYWY5N2M2LWNkNDctNDJmZS1iYTYzLThmMTQwNzFiMzA5MiJ9.PWZYMtCZrz6FBtWwSekY1vgOfLEpoOHDlqQqRLo0XTAgKNNGJSamNi_fJk4_JfkFHfdEZNXD0_OjLHgVsoU4vA"
+      "value": ""
     },
     {
       "name": "GEMINI_API_KEY",
-      "type": "cred"
+      "value": ""
     },
     {
       "name": "CURBCLASS_INVOICENINJA_TOKEN",
-      "type": "str",
-      "value": "96nrvSgddFbUA2JLm38I2FJHirK8XcBpl7e31iMRy25GnxLa5QdUhMCSfpbCSmcX"
+      "value": ""
     },
     {
       "name": "TWENTY_BASE_URL",
@@ -30,8 +27,7 @@
     },
     {
       "name": "RESEND_API_KEY",
-      "type": "str",
-      "value": "re_NMu8LEhZ_79htiqBBLKyfDZAcwnBPvGMb"
+      "value": ""
     }
   ],
   "nodes": [

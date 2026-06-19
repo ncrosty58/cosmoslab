@@ -1,3 +1,784 @@
 {
   "id": "website_leads_tab",
-  "label": "Website Leads"
+  "label": "CurbClass Leads",
+  "disabled": false,
+  "info": "Endpoint webhooks and Gotify notification routing for Chassis Shield and Curb Class website lead forms. Both pipelines: webhook -> Gotify push (notification) + Twenty CRM person/opportunity sync (response). Chassis Shield two-step signup: step 1 (register) creates/updates the Person and an Opportunity marked 'Profile Incomplete' (stage: Enrichment Pending). Step 2 (enrich) finds-or-creates that Opportunity, updates it to 'Profile Enriched' (stage: Profile Enriched) with the real name, and adds an enrichment Note plus a follow-up Task (due in 24h), both linked to the Person and Opportunity. A skipped Step 2 finds-or-creates the Opportunity marked 'Skipped Profile' (stage stays Enrichment Pending) and adds a lightweight follow-up Task (no enrichment Note). Curb Class also creates a Note (+ photo attachments) and a follow-up Task on the Opportunity. Twenty API tokens are stored as flow credentials (encrypted), not plaintext env values. Partial failures in the Twenty sync chain (failed Person/Opportunity/Note/Task/link creation) are logged via node.warn for visibility without affecting the HTTP response already sent to the website. Errors anywhere in the primary pipeline are caught by the shared catch node so the originating HTTP request always gets a response.",
+  "env": [
+    {
+      "name": "CHASSISSHIELD_TWENTY_TOKEN",
+      "value": ""
+    },
+    {
+      "name": "CURBCLASS_TWENTY_TOKEN",
+      "value": ""
+    },
+    {
+      "name": "GEMINI_API_KEY",
+      "value": ""
+    },
+    {
+      "name": "CURBCLASS_INVOICENINJA_TOKEN",
+      "value": ""
+    },
+    {
+      "name": "TWENTY_BASE_URL",
+      "type": "str",
+      "value": "http://bodhi.lab:3100"
+    },
+    {
+      "name": "RESEND_API_KEY",
+      "value": ""
+    }
+  ],
+  "nodes": [
+    {
+      "id": "f6e6cefc-09d3-4925-8518-d55de54e4491",
+      "type": "group",
+      "z": "website_leads_tab",
+      "name": "Error Handler",
+      "style": {
+        "stroke": "#c0392b",
+        "stroke-opacity": "1",
+        "fill": "#fdf2f2",
+        "fill-opacity": "0.5",
+        "label": true,
+        "label-position": "nw",
+        "color": "#c0392b"
+      },
+      "nodes": [
+        "weblead_catch_errors",
+        "weblead_error_response",
+        "weblead_http_response_error"
+      ],
+      "x": 54,
+      "y": 19,
+      "w": 762,
+      "h": 82
+    },
+    {
+      "id": "ccp_dashboard_group",
+      "type": "group",
+      "z": "website_leads_tab",
+      "name": "CurbClass \u2014 Dashboard Status Updates",
+      "style": {
+        "stroke": "#0094ce",
+        "stroke-opacity": "1",
+        "fill": "#e6f2ff",
+        "fill-opacity": "0.1",
+        "label": true,
+        "label-position": "nw"
+      },
+      "nodes": [
+        "ccp_markdown_main",
+        "ccp_dash_update_fn",
+        "dash_update_in"
+      ],
+      "x": 54,
+      "y": 789,
+      "w": 800,
+      "h": 160
+    },
+    {
+      "id": "cc_webhook_group",
+      "type": "group",
+      "z": "website_leads_tab",
+      "name": "CurbClass \u2014 Webhook & Person",
+      "style": {
+        "stroke": "#1e8449",
+        "stroke-opacity": "1",
+        "fill": "#f0fff4",
+        "fill-opacity": "0.5",
+        "label": true,
+        "label-position": "nw",
+        "color": "#1e8449"
+      },
+      "nodes": [
+        "curbclass_http_in",
+        "curbclass_validate_contact",
+        "curbclass_twenty_prepare_search",
+        "curbclass_person_upsert",
+        "curbclass_process_upserted_person",
+        "curbclass_contact_http_response"
+      ],
+      "x": 54,
+      "y": 59,
+      "w": 1200,
+      "h": 322
+    },
+    {
+      "id": "cc_opp_bid_group",
+      "type": "group",
+      "z": "website_leads_tab",
+      "name": "CurbClass \u2014 Opportunity & BidAgent",
+      "style": {
+        "stroke": "#1e8449",
+        "stroke-opacity": "1",
+        "fill": "#f0fff4",
+        "fill-opacity": "0.5",
+        "label": true,
+        "label-position": "nw",
+        "color": "#1e8449"
+      },
+      "nodes": [
+        "curbclass_twenty_prepare_opportunity",
+        "curbclass_create_ninja_client_out",
+        "lc_cc_prep_opp",
+        "curbclass_twenty_http_opportunity",
+        "curbclass_process_created_opportunity",
+        "curbclass_process_general_inquiry",
+        "cc_prep_bidagent_req",
+        "cc_bidagent_http_rq",
+        "curbclass_process_estimate_result",
+        "curbclass_twenty_prepare_attachments"
+      ],
+      "x": 54,
+      "y": 59,
+      "w": 1800,
+      "h": 540
+    },
+    {
+      "id": "cc_crm_group",
+      "type": "group",
+      "z": "website_leads_tab",
+      "name": "CurbClass \u2014 Notifications & CRM",
+      "style": {
+        "stroke": "#1e8449",
+        "stroke-opacity": "1",
+        "fill": "#f0fff4",
+        "fill-opacity": "0.5",
+        "label": true,
+        "label-position": "nw",
+        "color": "#1e8449"
+      },
+      "nodes": [
+        "curbclass_contact_format",
+        "curbclass_contact_gotify_push",
+        "curbclass_twenty_prepare_note",
+        "curbclass_note_link",
+        "curbclass_twenty_check_note_target",
+        "curbclass_twenty_prepare_task",
+        "curbclass_task_link",
+        "curbclass_twenty_check_task_target",
+        "dash_gotify_helper"
+      ],
+      "x": 54,
+      "y": 59,
+      "w": 1800,
+      "h": 500
+    },
+    {
+      "id": "cc_post_group",
+      "type": "group",
+      "z": "website_leads_tab",
+      "name": "CurbClass \u2014 Post-Process",
+      "style": {
+        "stroke": "#1e8449",
+        "stroke-opacity": "1",
+        "fill": "#f0fff4",
+        "fill-opacity": "0.5",
+        "label": true,
+        "label-position": "nw",
+        "color": "#1e8449"
+      },
+      "nodes": [
+        "curbclass_http_send_emails",
+        "curbclass_patch_opportunity_stage",
+        "curbclass_twenty_http_patch_opportunity",
+        "dash_email_helper"
+      ],
+      "x": 54,
+      "y": 59,
+      "w": 1400,
+      "h": 400
+    },
+    {
+      "id": "weblead_catch_errors",
+      "type": "catch",
+      "z": "website_leads_tab",
+      "g": "f6e6cefc-09d3-4925-8518-d55de54e4491",
+      "name": "Catch Lead Processing Errors",
+      "scope": null,
+      "uncaught": false,
+      "x": 200,
+      "y": 60,
+      "wires": [
+        [
+          "weblead_error_response"
+        ]
+      ]
+    },
+    {
+      "id": "weblead_error_response",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "f6e6cefc-09d3-4925-8518-d55de54e4491",
+      "name": "Format Error Response",
+      "func": "const err = msg.error || {};\nconst src = err.source ? ` [source: ${err.source.name || err.source.id}]` : '';\nconst errText = (err.message || String(err)) + src;\n\n// If HTTP headers have already been sent, just log the background error to prevent infinite loops\nif (!msg.res || msg.res.headersSent) {\n    node.warn(\"Background CRM error (ignored): \" + errText);\n    return null;\n}\n\nnode.warn(\"Lead processing error (will 500): \" + errText);\n\nmsg.statusCode = 500;\nmsg.payload = { success: false, error: \"Failed to process lead.\" };\nmsg.headers = { \"Content-Type\": \"application/json\" };\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 440,
+      "y": 60,
+      "wires": [
+        [
+          "weblead_http_response_error"
+        ]
+      ]
+    },
+    {
+      "id": "weblead_http_response_error",
+      "type": "http response",
+      "z": "website_leads_tab",
+      "g": "f6e6cefc-09d3-4925-8518-d55de54e4491",
+      "name": "HTTP Response (Error)",
+      "statusCode": "",
+      "x": 680,
+      "y": 60,
+      "wires": []
+    },
+    {
+      "id": "curbclass_http_in",
+      "type": "http in",
+      "z": "website_leads_tab",
+      "g": "cc_webhook_group",
+      "name": "Curb Class Contact Webhook",
+      "url": "/api/curbclass/contact",
+      "method": "post",
+      "upload": false,
+      "x": 180,
+      "y": 200,
+      "wires": [
+        [
+          "curbclass_validate_contact"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_validate_contact",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_webhook_group",
+      "name": "Validate Contact Payload",
+      "func": "const p = msg.payload || {};\nconst name = (p.name || '').trim();\nconst email = (p.email || '').trim();\nconst phone = (p.phone || '').trim();\n\nconst missing = [];\nif (!name) missing.push('name');\nif (!email) missing.push('email');\nif (!phone) missing.push('phone');\n\nif (missing.length > 0) {\n    const errMsg = Object.assign({}, msg);\n    errMsg.statusCode = 400;\n    errMsg.payload = {\n        success: false,\n        error: `Missing required field(s): ${missing.join(', ')}`\n    };\n    errMsg.headers = { 'Content-Type': 'application/json' };\n    return [null, errMsg];\n}\n\n\nreturn [msg, null];",
+      "outputs": 2,
+      "x": 380,
+      "y": 200,
+      "wires": [
+        [
+          "curbclass_contact_http_response",
+          "curbclass_twenty_prepare_search"
+        ],
+        [
+          "weblead_http_response_error"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_contact_http_response",
+      "type": "http response",
+      "z": "website_leads_tab",
+      "g": "cc_webhook_group",
+      "name": "HTTP Response 200",
+      "statusCode": "200",
+      "x": 640,
+      "y": 540,
+      "wires": []
+    },
+    {
+      "id": "curbclass_twenty_prepare_search",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_webhook_group",
+      "name": "Prepare Lead Data",
+      "func": "msg.originalPayload = msg.payload; // Save for later\nconst name = (msg.payload.name || '').trim();\nconst email = (msg.payload.email || '').trim().toLowerCase();\nlet phone = (msg.payload.phone || '').trim();\n\nlet validPhone = null;\nconst cleanPhone = phone.replace(/\\D/g, '');\nif (cleanPhone.length === 10) {\n    validPhone = '+1' + cleanPhone;\n} else if (cleanPhone.length > 10) {\n    validPhone = phone.startsWith('+') ? phone : '+' + cleanPhone;\n}\n\nconst nameParts = name.split(' ');\nconst firstName = nameParts[0] || '';\nconst lastName = nameParts.slice(1).join(' ');\n\nmsg.lead = {\n    firstName: firstName,\n    lastName: lastName,\n    email: email,\n    phone: validPhone\n};\nmsg.jobTitle = \"Curb Class Lead\";\nmsg.twentyToken = env.get(\"CURBCLASS_TWENTY_TOKEN\");\nmsg.twentyHost = \"curbclass.localhost:3000\";\n\nreturn msg;",
+      "outputs": 1,
+      "x": 580,
+      "y": 200,
+      "wires": [
+        [
+          "curbclass_person_upsert"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_person_upsert",
+      "type": "link call",
+      "z": "website_leads_tab",
+      "g": "cc_webhook_group",
+      "name": "Search & Upsert Person",
+      "links": [
+        "ps_link_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 780,
+      "y": 200,
+      "wires": [
+        [
+          "curbclass_process_upserted_person"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_process_upserted_person",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_webhook_group",
+      "name": "Process Upserted Person",
+      "func": "let person = null;\ntry {\n    if (msg.payload && msg.payload.data) {\n        person = msg.payload.data.createPerson || msg.payload.data.updatePerson || null;\n    }\n} catch(e) {}\nconst personId = (person ? person.id : '') || msg.personId || '';\nmsg.personId = personId;\n\nif (!msg.personId) {\n    node.warn(\"CurbClass: Person create/update failed - \" + JSON.stringify(msg.payload));\n    return null;\n}\n\n\nreturn [\n    RED.util.cloneMessage(msg),\n    RED.util.cloneMessage(msg),\n    null\n];",
+      "outputs": 3,
+      "x": 980,
+      "y": 200,
+      "wires": [
+        [
+          "curbclass_twenty_prepare_opportunity"
+        ],
+        [
+          "curbclass_create_ninja_client_out"
+        ],
+        []
+      ]
+    },
+    {
+      "id": "curbclass_twenty_prepare_opportunity",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_opp_bid_group",
+      "name": "Prepare Opportunity",
+      "func": "let intakeDetails = `Product: ${msg.originalPayload.product || 'General inquiry'}\\n`;\nif (msg.originalPayload.message) {\n    intakeDetails += `\\nMessage:\\n${msg.originalPayload.message}\\n`;\n}\nif (msg.originalPayload.imageUrls && msg.originalPayload.imageUrls.length > 0) {\n    intakeDetails += `\\nProperty Photos:\\n`;\n    msg.originalPayload.imageUrls.forEach((url, i) => {\n        intakeDetails += `- Photo ${i + 1}: ${url}\\n`;\n    });\n}\n\nmsg.method = \"POST\";\nmsg.url = env.get(\"TWENTY_BASE_URL\") + \"/rest/opportunities\";\nmsg.payload = {\n    name: \"CurbClass: \" + (msg.originalPayload.name || \"New Lead\"),\n    stage: \"NEW\",\n    pointOfContactId: msg.personId,\n    intakeDetails: intakeDetails\n};\n\nreturn msg;",
+      "outputs": 1,
+      "x": 1220,
+      "y": 200,
+      "wires": [
+        [
+          "lc_cc_prep_opp"
+        ]
+      ]
+    },
+    {
+      "id": "lc_cc_prep_opp",
+      "type": "link call",
+      "z": "website_leads_tab",
+      "g": "cc_opp_bid_group",
+      "name": "Add Twenty Auth Headers",
+      "links": [
+        "cc_twenty_hdr_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 1420,
+      "y": 200,
+      "wires": [
+        [
+          "curbclass_twenty_http_opportunity"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_http_opportunity",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "g": "cc_opp_bid_group",
+      "name": "Create/Update Opportunity",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "x": 1620,
+      "y": 200,
+      "wires": [
+        [
+          "curbclass_process_created_opportunity"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_process_created_opportunity",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_opp_bid_group",
+      "name": "Process Opportunity Response",
+      "func": "const opp = msg.payload && msg.payload.data && (msg.payload.data.createOpportunity || msg.payload.data.updateOpportunity);\nconst oppId = opp ? opp.id : '';\nmsg.opportunityId = oppId;\n\nif (!oppId) {\n    node.warn(\"CurbClass: Opportunity creation failed - \" + JSON.stringify(msg.payload));\n    return null;\n}\n\n\nconst product = msg.originalPayload.product || '';\nconst imageUrls = msg.originalPayload.imageUrls || [];\nconst isServiceInquiry = product.includes('Service Bundle Inquiry') || product.includes('Refresh Estimate');\nconst hasPhotos = imageUrls && imageUrls.length > 0;\n\nif (isServiceInquiry && hasPhotos) {\n    return [msg, null, null];\n} else {\n    return [null, msg, null];\n}",
+      "outputs": 3,
+      "x": 1860,
+      "y": 200,
+      "wires": [
+        [
+          "cc_prep_bidagent_req"
+        ],
+        [
+          "curbclass_process_general_inquiry"
+        ],
+        [
+          "curbclass_twenty_prepare_attachments"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_prepare_attachments",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_opp_bid_group",
+      "name": "Prepare Attachments",
+      "func": "const oppId = msg.opportunityId;\nif (!oppId || !msg.originalPayload.imageUrls || msg.originalPayload.imageUrls.length === 0) {\n    return null;\n}\n\nconst token = env.get(\"CURBCLASS_TWENTY_TOKEN\");\nconst fieldMetadataId = \"951c6783-41fd-4f2c-ba4f-f250fcb0fb9e\";\n\n(async () => {\n    try {\n        for (let i = 0; i < msg.originalPayload.imageUrls.length; i++) {\n            const url = msg.originalPayload.imageUrls[i];\n            const filename = url.substring(url.lastIndexOf('/') + 1);\n            \n            const response = await axios.get(url, { responseType: 'arraybuffer' });\n            const buffer = Buffer.from(response.data);\n            \n            const form = new FormData();\n            form.append('operations', JSON.stringify({\n                operationName: \"UploadFilesFieldFile\",\n                variables: { file: null, fieldMetadataId: fieldMetadataId },\n                query: \"mutation UploadFilesFieldFile($file: Upload!, $fieldMetadataId: String!) { uploadFilesFieldFile(file: $file, fieldMetadataId: $fieldMetadataId) { id } }\"\n            }));\n            form.append('map', JSON.stringify({ \"1\": [\"variables.file\"] }));\n            form.append('1', buffer, { filename: filename, contentType: 'image/jpeg' });\n            \n            const uploadRes = await axios.post(env.get(\"TWENTY_BASE_URL\") + \"/metadata\", form, {\n                headers: {\n                    ...form.getHeaders(),\n                    'Authorization': `Bearer ${token}`,\n                    'Host': 'curbclass.localhost:3000'\n                }\n            });\n            \n            const fileId = uploadRes.data && uploadRes.data.data && uploadRes.data.data.uploadFilesFieldFile && uploadRes.data.data.uploadFilesFieldFile.id;\n            if (!fileId) continue;\n            \n            await axios.post(env.get(\"TWENTY_BASE_URL\") + \"/rest/attachments\", {\n                name: filename,\n                fullPath: url,\n                targetOpportunityId: oppId,\n                fileCategory: \"IMAGE\",\n                file: [{ fileId: fileId, label: filename }]\n            }, {\n                headers: {\n                    'Authorization': `Bearer ${token}`,\n                    'Host': 'curbclass.localhost:3000',\n                    'Content-Type': 'application/json'\n                }\n            });\n        }\n    } catch (err) {\n        node.warn(\"CurbClass: Attachments error: \" + err.message);\n    }\n})();\n\nreturn null;",
+      "outputs": 1,
+      "libs": [
+        {
+          "var": "axios",
+          "module": "axios"
+        },
+        {
+          "var": "FormData",
+          "module": "form-data"
+        }
+      ],
+      "x": 2100,
+      "y": 120,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "curbclass_process_general_inquiry",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_opp_bid_group",
+      "name": "Process General Inquiry",
+      "func": "const orig = msg.originalPayload || msg.payload || {};\n\n// Output 1, 2, 3: CRM/Gotify path (uses orig)\nconst m1 = RED.util.cloneMessage(msg);\nm1.payload = orig;\n\nconst m2 = RED.util.cloneMessage(msg);\nm2.payload = orig;\n\nconst m3 = RED.util.cloneMessage(msg);\nm3.payload = orig;\n\n// Output 4: Email path\nconst m4 = RED.util.cloneMessage(msg);\nm4.payload = {\n    customerEmail: orig.email || \"\",\n    customerName: orig.name || \"\",\n    customerPhone: orig.phone || \"\",\n    zipCode: orig.zip_code || \"\",\n    product: orig.product || \"General inquiry\",\n    message: orig.message || \"\",\n    estimate: null\n};\n\nreturn [m1, m2, m3, m4];",
+      "outputs": 4,
+      "x": 2100,
+      "y": 200,
+      "wires": [
+        [
+          "curbclass_contact_format"
+        ],
+        [
+          "curbclass_twenty_prepare_note"
+        ],
+        [
+          "curbclass_twenty_prepare_task"
+        ],
+        [
+          "curbclass_http_send_emails"
+        ]
+      ]
+    },
+    {
+      "id": "cc_prep_bidagent_req",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_opp_bid_group",
+      "name": "Prepare BidAgent Request",
+      "func": "const axios = this.axios || axios;\nconst p = msg.originalPayload || msg.payload || {};\nconst name = p.name || '';\nconst email = p.email || '';\nconst product = p.product || '';\nconst imageUrls = p.imageUrls || [];\nconst zip_code = p.zip_code || '';\nconst phone = p.phone || '';\n\nlet requested_services = '';\nconst parts = product.split(' | ');\nparts.forEach(part => {\n    if (part.startsWith('Services: ')) {\n        requested_services = part.replace('Services: ', '').split(', ').filter(s => !s.startsWith('Timeline:')).join(',');\n    }\n});\n\nif (!requested_services) {\n    node.error(\"CurbClass: No requested services in product string\");\n    return null;\n}\n\n(async () => {\n    try {\n        const pbResp = await axios.get('http://bodhi.lab:1880/api/curbclass/bidagent/pricebook');\n        const servicesList = pbResp.data && pbResp.data.data && pbResp.data.data.services || [];\n        \n        const serviceMap = {};\n        servicesList.forEach(function(svc) {\n            if (svc.name && svc.bidagentServiceKey) {\n                serviceMap[svc.name] = svc.bidagentServiceKey;\n            }\n        });\n\n        const services = requested_services.split(/[,|]/).map(function(s) {\n            var trimmed = s.trim();\n            return serviceMap[trimmed] || trimmed;\n        }).filter(Boolean).join(',');\n\n        let image_urls = '';\n        if (imageUrls) {\n            if (Array.isArray(imageUrls)) {\n                image_urls = imageUrls.join(',');\n            } else {\n                image_urls = String(imageUrls);\n            }\n        }\n\n        msg.method = \"POST\";\n        msg.url = \"http://bodhi.lab:8000/api/v1/estimate\";\n        msg.headers = { \"Content-Type\": \"application/x-www-form-urlencoded\" };\n        msg.payload = \"requested_services=\" + encodeURIComponent(services) +\n                      \"&zip_code=\" + encodeURIComponent(zip_code) +\n                      \"&customer_name=\" + encodeURIComponent(name) +\n                      \"&customer_email=\" + encodeURIComponent(email) +\n                      \"&customer_phone=\" + encodeURIComponent(phone) +\n                      \"&image_urls=\" + encodeURIComponent(image_urls);\n        node.send(msg);\n        node.done();\n    } catch (error) {\n        node.error(\"CurbClass: BidAgent prep error: \" + error.message, msg);\n        node.done();\n    }\n})();\nreturn null;",
+      "outputs": 1,
+      "libs": [
+        {
+          "var": "axios",
+          "module": "axios"
+        }
+      ],
+      "x": 2100,
+      "y": 360,
+      "wires": [
+        [
+          "cc_bidagent_http_rq"
+        ]
+      ]
+    },
+    {
+      "id": "cc_bidagent_http_rq",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "g": "cc_opp_bid_group",
+      "name": "Call BidAgent API",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "x": 2300,
+      "y": 360,
+      "wires": [
+        [
+          "curbclass_process_estimate_result"
+        ],
+        [
+          "bidagent_http_error_handler"
+        ]
+      ],
+      "senderr": true
+    },
+    {
+      "id": "curbclass_process_estimate_result",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_opp_bid_group",
+      "name": "Process Estimate Result",
+      "func": "const estimate = msg.payload;\nconst orig = msg.originalPayload || {};\n\nif (!estimate || !estimate.status) {\n    node.warn(\"CurbClass: BidAgent response invalid: \" + JSON.stringify(estimate));\n    // Fallback: send inquiry email to customer + internal error notification\n    const fallbackMsg = RED.util.cloneMessage(msg);\n    fallbackMsg.payload = {\n        customerEmail: (msg.originalPayload || {}).email || '',\n        customerName: (msg.originalPayload || {}).name || '',\n        customerPhone: (msg.originalPayload || {}).phone || '',\n        zipCode: (msg.originalPayload || {}).zip_code || '',\n        product: (msg.originalPayload || {}).product || 'General inquiry',\n        message: (msg.originalPayload || {}).message || '',\n        estimate: null\n    };\n    const gotifyFallback = RED.util.cloneMessage(msg);\n    gotifyFallback.originalPayload = msg.originalPayload || {};\n    return [fallbackMsg, null, null, null, null, gotifyFallback];\n}\n\norig.estimate = estimate;\n\nif (estimate.status === 'estimate') {\n    // Port 1: Send Estimate Emails\n    const m1 = RED.util.cloneMessage(msg);\n    m1.payload = {\n        customerEmail: orig.email || '',\n        customerName: orig.name || '',\n        customerPhone: orig.phone || '',\n        zipCode: orig.zip_code || '',\n        estimate: estimate\n    };\n    \n    // Port 2: Patch Opportunity Stage\n    const m2 = RED.util.cloneMessage(msg);\n    m2.payload = orig;\n    \n    // Port 3: CRM / Gotify\n    const m3 = RED.util.cloneMessage(msg);\n    m3.payload = orig;\n    \n\n// Port 4: Dashboard link\n    const m4 = RED.util.cloneMessage(msg);\n    m4.payload = orig;\n    m4.stage = \"estimate_done\";\n    m4.details = \"AI estimate generated.\";\n    \n    return [m1, m2, m3, m4, null, null];\n} else {\n    // Port 5: Rejection CRM & Gotify\n    const m5 = RED.util.cloneMessage(msg);\n    m5.payload = orig;\n    \n    // Port 6: Error response\n    const m6 = RED.util.cloneMessage(msg);\n    m6.payload = orig;\n    \n    return [null, null, null, null, m5, m6];\n}",
+      "outputs": 6,
+      "x": 2540,
+      "y": 360,
+      "wires": [
+        [
+          "curbclass_http_send_emails"
+        ],
+        [
+          "curbclass_patch_opportunity_stage"
+        ],
+        [
+          "curbclass_contact_format",
+          "curbclass_twenty_prepare_note",
+          "curbclass_twenty_prepare_task"
+        ],
+        [],
+        [
+          "curbclass_contact_format",
+          "curbclass_twenty_prepare_note",
+          "curbclass_twenty_prepare_task"
+        ],
+        [
+          "bidagent_fallback_gotify"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_http_send_emails",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "g": "cc_post_group",
+      "name": "POST Estimate Email",
+      "method": "POST",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "http://192.168.80.1:8095/api/estimate-email",
+      "x": 3080,
+      "y": 540,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "curbclass_patch_opportunity_stage",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_post_group",
+      "name": "Patch Opportunity Stage",
+      "func": "msg.method = \"PATCH\";\nmsg.url = `${env.get(\"TWENTY_BASE_URL\")}/rest/opportunities/${msg.opportunityId}`;\nmsg.payload = { stage: \"MEETING\" };\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + env.get(\"CURBCLASS_TWENTY_TOKEN\"),\n    \"Host\": \"curbclass.localhost:3000\",\n    \"Content-Type\": \"application/json\"\n};\nreturn msg;",
+      "outputs": 1,
+      "x": 3080,
+      "y": 660,
+      "wires": [
+        [
+          "curbclass_twenty_http_patch_opportunity"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_http_patch_opportunity",
+      "type": "http request",
+      "z": "website_leads_tab",
+      "g": "cc_post_group",
+      "name": "Patch Opportunity Stage Request",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "x": 3280,
+      "y": 660,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "curbclass_contact_format",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_crm_group",
+      "name": "Format Curb Class Lead",
+      "func": "const payload = msg.originalPayload || msg.payload || {};\nconst name = payload.name || 'Unknown';\nconst email = payload.email || 'N/A';\nconst phone = payload.phone || 'N/A';\nconst product = payload.product || 'General inquiry';\nconst message = payload.message || '';\n\n// Parse product string\nlet servicesList = '';\nlet style = '';\nlet schedule = '';\n\nconst scheduleSplit = product.split(/\\s*\\|?\\s*Schedule:\\s*/i);\nif (scheduleSplit.length > 1) {\n    schedule = scheduleSplit[1].trim();\n}\nconst servicePart = scheduleSplit[0].trim();\n\nif (servicePart.includes('|')) {\n    const parts = servicePart.split(/\\s*\\|\\s*/);\n    parts.forEach(function(part) {\n        if (part.toLowerCase().startsWith('style:')) {\n            style = part.substring(6).trim();\n        } else if (part.toLowerCase().startsWith('services:')) {\n            servicesList = part.substring(9).trim();\n        }\n    });\n} else {\n    servicesList = servicePart;\n}\nif (servicesList.toLowerCase().startsWith('services:')) {\n    servicesList = servicesList.substring(9).trim();\n}\n\nlet lines = [];\nlines.push('**Email:** ' + email);\nlines.push('**Phone:** ' + phone);\n\nconst est = payload.estimate || (msg.payload && msg.payload.estimate);\nif (!est || est.status !== 'estimate') {\n    if (servicesList) lines.push('**Services:** ' + servicesList);\n}\nif (style) lines.push('**Style:** ' + style);\nif (schedule) lines.push('**Schedule:** ' + schedule);\nif (message) lines.push('**Message:** ' + message);\n\nif (est && est.status === 'estimate') {\n    if (est.contractor_notes) {\n        lines.push('');\n        lines.push('### \ud83d\udd27 Crew Brief & Rationale');\n        lines.push(est.contractor_notes);\n    }\n\n    if (est.itemized_quote && est.itemized_quote.length > 0) {\n        lines.push('');\n        lines.push('### \ud83d\udcb0 AI Estimate');\n        est.itemized_quote.forEach(function(item) {\n            const priceStr = item.price_low === item.price_high ? '$' + item.price_low : '$' + item.price_low + ' - $' + item.price_high;\n            lines.push('\u2022 **' + (item.label || item.service) + '**: ' + priceStr);\n        });\n        const totalStr = est.total_low === est.total_high ? '$' + est.total_low : '$' + est.total_low + ' - $' + est.total_high;\n        lines.push('**Estimated Total:** ' + totalStr);\n    }\n\n    if (est.warnings && est.warnings.length > 0) {\n        lines.push('');\n        lines.push('### \u26a0\ufe0f Warnings');\n        est.warnings.forEach(function(w) {\n            lines.push('\u2022 ' + w);\n        });\n    }\n} else if (est && est.status === 'rejected') {\n    lines.push('');\n    lines.push('### \u26d4 Auto Rejection\\n' + (est.rejection || 'Unknown reason'));\n}\n\nmsg.payload = lines.join('\\n\\n');\nmsg.title = \"\ud83c\udfe1 New CurbClass Lead: \" + name;\nmsg.extras = {\n    \"client::display\": {\n        \"contentType\": \"text/markdown\"\n    }\n};\nmsg.priority = 6;\nreturn msg;",
+      "outputs": 1,
+      "x": 3080,
+      "y": 180,
+      "wires": [
+        [
+          "curbclass_contact_gotify_push"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_contact_gotify_push",
+      "type": "gotify-push",
+      "z": "website_leads_tab",
+      "g": "cc_crm_group",
+      "name": "Send to Gotify",
+      "title": "",
+      "message": "",
+      "priority": 5,
+      "extras": "",
+      "client": "",
+      "override": false,
+      "server": "gotify_curbclass_config",
+      "x": 3280,
+      "y": 180,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "curbclass_twenty_prepare_note",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_crm_group",
+      "name": "Prepare Note",
+      "func": "const oppId = msg.opportunityId;\nif (!oppId) return null;\n\nconst product = msg.originalPayload.product || 'General inquiry';\n\n// Parse product string\nlet servicesList = '';\nlet style = '';\nlet schedule = '';\n\nconst scheduleSplit = product.split(/\\s*\\|?\\s*Schedule:\\s*/i);\nif (scheduleSplit.length > 1) {\n    schedule = scheduleSplit[1].trim();\n}\nconst servicePart = scheduleSplit[0].trim();\n\nif (servicePart.includes('|')) {\n    const parts = servicePart.split(/\\s*\\|\\s*/);\n    parts.forEach(function(part) {\n        if (part.toLowerCase().startsWith('style:')) {\n            style = part.substring(6).trim();\n        } else if (part.toLowerCase().startsWith('services:')) {\n            servicesList = part.substring(9).trim();\n        }\n    });\n} else {\n    servicesList = servicePart;\n}\nif (servicesList.toLowerCase().startsWith('services:')) {\n    servicesList = servicesList.substring(9).trim();\n}\n\nlet markdown = '';\nif (servicesList) markdown += '**Services:** ' + servicesList + '\\n';\nif (style) markdown += '**Style:** ' + style + '\\n';\nif (schedule) markdown += '**Schedule:** ' + schedule + '\\n';\nmarkdown += '\\n';\n\nif (msg.originalPayload.message) {\n    markdown += '**Message:**\\n' + msg.originalPayload.message + '\\n\\n';\n}\n\nconst est = msg.originalPayload.estimate;\nif (est && est.status === 'estimate' && est.itemized_quote && est.itemized_quote.length > 0) {\n    markdown += '---\\n**AI Estimate**\\n\\n';\n    if (est.description) {\n        markdown += '**Job Executive Summary:**\\n' + est.description + '\\n\\n';\n    }\n    if (est.contractor_notes) {\n        markdown += '**Crew Brief & Rationale:**\\n' + est.contractor_notes + '\\n\\n';\n    }\n    if (est.total_low === est.total_high) {\n        markdown += '| Service | Description | Price |\\n';\n        markdown += '|---------|-------------|-------|\\n';\n        est.itemized_quote.forEach(function(item) {\n            const desc = (item.description || '').replace(/\\n/g, ' ');\n            const priceStr = item.price_low === item.price_high ? '$' + item.price_low : '$' + item.price_low + ' - $' + item.price_high;\n            markdown += '| ' + (item.label || item.service) + ' | ' + desc + ' | ' + priceStr + ' |\\n';\n        });\n        markdown += '| **Total** | | **$' + est.total_low + '** |\\n';\n    } else {\n        markdown += '| Service | Description | Low | High |\\n';\n        markdown += '|---------|-------------|-----|------|\\n';\n        est.itemized_quote.forEach(function(item) {\n            const desc = (item.description || '').replace(/\\n/g, ' ');\n            markdown += '| ' + (item.label || item.service) + ' | ' + desc + ' | $' + item.price_low + ' | $' + item.price_high + ' |\\n';\n        });\n        markdown += '| **Total** | | **$' + est.total_low + '** | **$' + est.total_high + '** |\\n';\n    }\n    if (est.warnings && est.warnings.length > 0) {\n        markdown += '\\n*Warnings:* ' + est.warnings.join(', ') + '\\n';\n    }\n} else if (est && est.status === 'rejected') {\n    markdown += '---\\n**BidAgent Auto-Rejection:** ' + est.rejection + '\\n';\n}\n\nif (msg.originalPayload.imageUrls && msg.originalPayload.imageUrls.length > 0) {\n    markdown += '\\n**Property Photos:**\\n';\n    msg.originalPayload.imageUrls.forEach(function(url, i) {\n        markdown += '- [Photo ' + (i + 1) + '](' + url + ')\\n';\n    });\n}\n\nmsg.noteTitle = \"CurbClass Inquiry Details\" + (est && est.status === 'estimate' ? ' (with Estimate)' : '');\nmsg.noteMarkdown = markdown;\nmsg.twentyToken = env.get(\"CURBCLASS_TWENTY_TOKEN\");\nmsg.twentyHost = \"curbclass.localhost:3000\";\n\nreturn msg;",
+      "outputs": 1,
+      "x": 3080,
+      "y": 300,
+      "wires": [
+        [
+          "curbclass_note_link"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_note_link",
+      "type": "link call",
+      "z": "website_leads_tab",
+      "g": "cc_crm_group",
+      "name": "Create Note + Link",
+      "links": [
+        "nl_link_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 3280,
+      "y": 300,
+      "wires": [
+        [
+          "curbclass_twenty_check_note_target"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_check_note_target",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_crm_group",
+      "name": "Check Note Target Link",
+      "func": "if (msg.noteResult && !msg.noteResult.success) {\n    node.warn(\"CurbClass: Note creation/link failed - \" + JSON.stringify(msg.noteResult.error || msg.noteResult.details));\n}\nreturn null;",
+      "outputs": 1,
+      "x": 3480,
+      "y": 300,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "curbclass_twenty_prepare_task",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_crm_group",
+      "name": "Prepare Follow-up Task",
+      "func": "const oppId = msg.opportunityId;\nif (!oppId) return null;\n\nconst data = msg.originalPayload;\nconst hasPhotos = data.imageUrls && data.imageUrls.length > 0;\nconst est = data.estimate;\n\nlet statusStr = \"General inquiry\";\nif (est && est.status === 'estimate') {\n    statusStr = `Estimate Ready ($${est.total_low === est.total_high ? est.total_low : est.total_low + '-' + est.total_high})`;\n} else if (est && est.status === 'rejected') {\n    statusStr = `Estimate Auto-Rejected: ${est.rejection}`;\n}\n\nmsg.taskTitle = `Follow up: ${data.name || 'New Lead'} - ${statusStr}`;\nmsg.taskMarkdown = `**Phone:** ${data.phone || 'Not specified'}\\n**Product:** ${data.product || 'General inquiry'}\\n**Photos attached:** ${hasPhotos ? 'Yes (' + data.imageUrls.length + ')' : 'No'}\\n\\n${data.message ? '**Message:**\\n' + data.message + '\\n\\n' : ''}Prepare quote and respond within 24 hours.`;\nmsg.twentyToken = env.get(\"CURBCLASS_TWENTY_TOKEN\");\nmsg.twentyHost = \"curbclass.localhost:3000\";\n\nreturn msg;",
+      "outputs": 1,
+      "x": 3080,
+      "y": 420,
+      "wires": [
+        [
+          "curbclass_task_link"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_task_link",
+      "type": "link call",
+      "z": "website_leads_tab",
+      "g": "cc_crm_group",
+      "name": "Create Task + Link",
+      "links": [
+        "tl_link_in"
+      ],
+      "linkType": "static",
+      "timeout": "30",
+      "x": 3280,
+      "y": 420,
+      "wires": [
+        [
+          "curbclass_twenty_check_task_target"
+        ]
+      ]
+    },
+    {
+      "id": "curbclass_twenty_check_task_target",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_crm_group",
+      "name": "Check Task Target Link",
+      "func": "if (msg.taskResult && !msg.taskResult.success) {\n    node.warn(\"CurbClass: Task creation/link failed - \" + JSON.stringify(msg.taskResult.error || msg.taskResult.details));\n}\nreturn null;",
+      "outputs": 1,
+      "x": 3480,
+      "y": 420,
+      "wires": [
+        []
+      ]
+    },
+    {
+      "id": "curbclass_create_ninja_client_out",
+      "type": "link out",
+      "z": "website_leads_tab",
+      "g": "cc_opp_bid_group",
+      "name": "Create Ninja Client (Link)",
+      "mode": "list",
+      "links": [
+        "curbclass_create_ninja_client_in"
+      ],
+      "x": 1220,
+      "y": 280
+    },
+    {
+      "id": "bidagent_http_error_handler",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_opp_bid_group",
+      "name": "Handle BidAgent Error",
+      "func": "const err = msg.error || {};\nconst orig = msg.originalPayload || {};\nconst name = orig.name || 'Unknown';\nconst email = orig.email || 'N/A';\nconst product = orig.product || 'General inquiry';\nconst errText = (err.message || err.status || JSON.stringify(err)).substring(0, 500);\n\nnode.warn(\"CurbClass: BidAgent error for \" + name + \": \" + errText);\n\n// Forward to the existing email endpoint with estimate:null\nconst emailMsg = RED.util.cloneMessage(msg);\nemailMsg.payload = {\n    customerEmail: email,\n    customerName: name,\n    customerPhone: orig.phone || '',\n    zipCode: orig.zip_code || '',\n    product: product,\n    message: orig.message || '',\n    estimate: null\n};\n\n// Internal alert\nmsg.title = \"\\u26a0\\ufe0f CurbClass AI Estimate Failed\";\nmsg.priority = 8;\nmsg.payload = \"**Customer:** \" + name + \" (\" + email + \")\\n\" +\n              \"**Product:** \" + product + \"\\n\" +\n              \"**Phone:** \" + (orig.phone || 'N/A') + \"\\n\" +\n              \"**Error:** \" + errText + \"\\n\\n\" +\n              \"Customer was sent the general inquiry receipt instead.\";\n\nreturn [emailMsg, msg];",
+      "outputs": 2,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 2780,
+      "y": 440,
+      "wires": [
+        [
+          "curbclass_http_send_emails"
+        ],
+        [
+          "curbclass_contact_gotify_push"
+        ]
+      ]
+    },
+    {
+      "id": "bidagent_fallback_gotify",
+      "type": "function",
+      "z": "website_leads_tab",
+      "g": "cc_post_group",
+      "name": "Fallback: Gotify Alert",
+      "func": "const orig = msg.originalPayload || {};\nconst name = orig.name || 'Unknown';\nconst email = orig.email || 'N/A';\nconst product = orig.product || 'General inquiry';\n\nmsg.title = \"\\u26a0\\ufe0f CurbClass AI Estimate Failed\";\nmsg.priority = 8;\nmsg.payload = \"**Customer:** \" + name + \" (\" + email + \")\\n\" +\n              \"**Product:** \" + product + \"\\n\\n\" +\n              \"The AI returned an invalid response. Customer received the general inquiry receipt instead.\";\n\nreturn msg;",
+      "outputs": 1,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 3320,
+      "y": 520,
+      "wires": [
+        [
+          "curbclass_contact_gotify_push"
+        ]
+      ]
+    }
+  ]
+}
