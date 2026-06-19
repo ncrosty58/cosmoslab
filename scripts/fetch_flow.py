@@ -7,7 +7,7 @@ import os
 import re
 import urllib.request
 
-FLOW_IDS = [
+FLOW_IDS = ["website_leads_tab", "curbclass_ninja_tab", "crm_shared_tab", "chassisshield_leads_tab"]
     "website_leads_tab",
     "curbclass_ninja_tab",
     "crm_shared_tab",
