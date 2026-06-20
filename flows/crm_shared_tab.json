@@ -6,18 +6,22 @@
   "env": [
     {
       "name": "CHASSISSHIELD_TWENTY_TOKEN",
+      "type": "str",
       "value": ""
     },
     {
       "name": "CURBCLASS_TWENTY_TOKEN",
+      "type": "str",
       "value": ""
     },
     {
       "name": "GEMINI_API_KEY",
+      "type": "cred",
       "value": ""
     },
     {
       "name": "CURBCLASS_INVOICENINJA_TOKEN",
+      "type": "str",
       "value": ""
     },
     {
@@ -27,6 +31,7 @@
     },
     {
       "name": "RESEND_API_KEY",
+      "type": "str",
       "value": ""
     }
   ],
@@ -635,6 +640,24 @@
       "links": [],
       "x": 680,
       "y": 280
+    },
+    {
+      "id": "anno_shared_utils",
+      "type": "comment",
+      "z": "crm_shared_tab",
+      "x": 220,
+      "y": 40,
+      "name": "🛠️ CRM Shared Subflows & Link Call Endpoints",
+      "info": "Central reusable logic for Twenty CRM operations: Person search/upsert, Note creation/linking, Task creation/linking, and Authorization header formatting. Accessed via Link Call nodes from other tabs."
+    },
+    {
+      "id": "anno_shared_utils_desc",
+      "type": "comment",
+      "z": "crm_shared_tab",
+      "x": 220,
+      "y": 340,
+      "name": "📝 Reusable CRM Utility Subflow Definitions",
+      "info": "Exposes standard utility endpoints using Node-RED's Link In / Link Out system to prevent duplicate code:\n\n- Search & Upsert Person: robust deduplication and creation of People.\n- Create Note + Link: attaches a rich markdown note to an Opportunity/Person.\n- Create Task + Link: assigns a task linked to an Opportunity.\n- Twenty CRM Auth Headers: dynamically fetches the correct auth headers."
     }
   ]
 }
