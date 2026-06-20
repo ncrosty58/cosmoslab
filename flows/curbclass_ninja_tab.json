@@ -6,18 +6,22 @@
   "env": [
     {
       "name": "CHASSISSHIELD_TWENTY_TOKEN",
+      "type": "str",
       "value": ""
     },
     {
       "name": "CURBCLASS_TWENTY_TOKEN",
+      "type": "str",
       "value": ""
     },
     {
       "name": "GEMINI_API_KEY",
+      "type": "cred",
       "value": ""
     },
     {
       "name": "CURBCLASS_INVOICENINJA_TOKEN",
+      "type": "str",
       "value": ""
     },
     {
@@ -27,6 +31,7 @@
     },
     {
       "name": "RESEND_API_KEY",
+      "type": "str",
       "value": ""
     }
   ],
@@ -35,7 +40,7 @@
       "id": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
       "type": "group",
       "z": "curbclass_ninja_tab",
-      "name": "CurbClass \u2014 Invoice Ninja",
+      "name": "CurbClass — Invoice Ninja",
       "style": {
         "stroke": "#d35400",
         "stroke-opacity": "1",
@@ -111,7 +116,7 @@
       "id": "curbclass_ninja_create_group",
       "type": "group",
       "z": "curbclass_ninja_tab",
-      "name": "CurbClass \u2014 Create Ninja Client",
+      "name": "CurbClass — Create Ninja Client",
       "style": {
         "stroke": "#c7a059",
         "stroke-opacity": "1",
@@ -991,7 +996,9 @@
       "z": "curbclass_ninja_tab",
       "g": "curbclass_ninja_create_group",
       "name": "Create Ninja Client (Trigger)",
-      "links": [],
+      "links": [
+        "curbclass_create_ninja_client_out"
+      ],
       "x": 200,
       "y": 500,
       "wires": [
@@ -1016,6 +1023,45 @@
       "wires": [
         []
       ]
+    },
+    {
+      "id": "anno_ninja_sync",
+      "type": "comment",
+      "z": "curbclass_ninja_tab",
+      "x": 220,
+      "y": 40,
+      "name": "💳 Invoice Ninja Webhook -> Twenty CRM Sync",
+      "info": "Receives invoice, client, and payment webhooks from Invoice Ninja and reconciles them with Twenty CRM records (creates/updates clients, notes payments, updates opportunity stages, and sets tasks)."
+    },
+    {
+      "id": "anno_ninja_webhooks",
+      "type": "comment",
+      "z": "curbclass_ninja_tab",
+      "g": "6d9e040f-bd80-4826-b3aa-c997afa9bcc2",
+      "x": 200,
+      "y": 240,
+      "name": "📝 Invoice Ninja Inbound Webhook Sync",
+      "info": "Listens for webhook triggers from Invoice Ninja when client, quote, or invoice events occur.\n\nResolves the matching Twenty CRM client, updates the corresponding CRM Opportunity stage, and creates rich notes documenting the invoice status."
+    },
+    {
+      "id": "anno_ninja_reconcile",
+      "type": "comment",
+      "z": "curbclass_ninja_tab",
+      "g": "073da60c-3737-471c-9a30-954079c68a95",
+      "x": 200,
+      "y": 600,
+      "name": "📝 CRM-InvoiceNinja ID Reconciliation",
+      "info": "Runs automatically every 30 minutes. Fetches clients from Invoice Ninja and searches Twenty CRM for people with matching emails.\n\nIf a person is found in the CRM but lacks an Invoice Ninja Client ID reference, it backfills the field to ensure reliable future synchronizations."
+    },
+    {
+      "id": "anno_ninja_create_client",
+      "type": "comment",
+      "z": "curbclass_ninja_tab",
+      "g": "curbclass_ninja_create_group",
+      "x": 200,
+      "y": 440,
+      "name": "📝 Automatic Client Provisioning Flow",
+      "info": "Called via a Link Call node during the lead ingestion pipeline when a new lead is processed.\n\nProvisions a new client record in Invoice Ninja, retrieves the client ID, and updates the CRM Person record with this ID so invoices can be issued later."
     }
   ]
 }
